@@ -1,0 +1,7 @@
+node_modules/
+.openai/
+.test-output/
+artifacts/
+dist/
+*.log
+.DS_Store

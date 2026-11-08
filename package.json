@@ -1,0 +1,22 @@
+{
+  "name": "scanlibre",
+  "version": "1.2.0",
+  "description": "Lecteur local de Data Matrix, QR codes et codes-barres, sans installation.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:decoder": "node --test tests/decoder.test.mjs"
+  },
+  "dependencies": {
+    "zxing-wasm": "3.1.6"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
