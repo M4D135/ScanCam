@@ -1,8 +1,31 @@
-# Validation de ScanLibre 1.2.2
+# Validation de ScanLibre 1.2.3
 
-État de qualification du **9 novembre 2026**. La version 1.2.2 corrige l’ancrage de la navigation mobile et supprime le raccourci Réglages caméra redondant sur ce format. Elle ne modifie pas le moteur de lecture. Les qualifications du moteur 1.2.1 et de l’interface 1.2.0 sont conservées plus bas avec leur version et leur date ; leurs résultats ne constituent pas de nouveaux essais de 1.2.2.
+État de qualification du **9 novembre 2026**. La version 1.2.3 épure Scanner et regroupe ses paramètres dans Réglages → Lecture. Elle ne modifie pas le moteur de lecture. Les qualifications précédentes sont conservées plus bas avec leur version et leur date.
 
-## Qualification 1.2.2 — 9 novembre 2026
+## Qualification 1.2.3 — 9 novembre 2026
+
+Les contrôles portent sur le **HTML compilé**, ouvert dans Chrome sous Linux dans des cadres responsive.
+
+| Périmètre | Résultat | Portée |
+| --- | --- | --- |
+| Suite `npm test` relancée en 1.2.3 | **49 tests réussis, 1 ignoré, aucun échec** | 50 tests au total ; le test facultatif sur photo locale reste ignoré. |
+| Scanner simplifié | **Contrôlé** | Aucun sélecteur sur Scanner ; aperçu, Caméra / Image et navigation mobile fixe. Les statuts de repos répétés et le bouton d’arrêt désactivé sont retirés de cet écran. Les erreurs et états de traitement restent disponibles. |
+| Petit écran et portrait | **Sans débordement observé** | À 320 × 640 px : document de même taille, bas des actions à 559 px, navigation de 575 à 640 px. À 390 × 844 px : document de même taille, aperçu de 603 px, bas des actions à 763 px et barre au bas de la vue. |
+| Paysage | **Sans débordement observé** | À 844 × 390 px : document de même taille, aperçu de 149 px, navigation de 325 à 390 px. |
+| Présentation PC | **Contrôlée à 1 024 × 844 px** | Aperçu et résultat alignés ; les trois sélecteurs de Lecture occupent trois colonnes alignées dans Réglages. |
+| Réglages → Lecture | **Fonctionnel et mémorisé** | Format Data Matrix, profil Précision, zone centrale et lecture renforcée désactivée retrouvés après rechargement. Remis à Tous les formats / Équilibré / Image entière / lecture renforcée active en fin d’essai. Champs empilés à 320 px. |
+| Import d’un Data Matrix pâle fictif | **Lecture exacte** | `examples/data-matrix-pale.png` → `DEMO-PALE-0042`, avec ouverture de Résultat après import mobile. Le bouton Annuler apparaît pendant le traitement. |
+| Annulation d’un lot | **Contrôlée** | Lot de 50 copies de la fixture fictive interrompu avec Annuler. Retour à Caméra / Image, focus sur Caméra, Scanner conservé et résultats déjà lus disponibles. Un lot complet de 50 copies a aussi été lu. |
+| Informations déplacées | **Toujours alimentées** | Dernière analyse est affichée dans Réglages → Caméra après import : 960 × 720 px, durée observée de 103 ms. Cette durée ponctuelle n’est pas une mesure de débit. |
+| Caméra indisponible | **Retour intégré** | En absence de matériel, message d’indisponibilité ; retour au bouton Caméra actif, sans bouton Arrêter désactivé sur Scanner. |
+| Thèmes clair et sombre | **Contrôlés** | Changement de thème, puis retour au thème clair pour la capture de référence. |
+| Raccords d’interface | **Revue statique effectuée** | IDs uniques, listeners et préférences conservés, commandes déléguées depuis Réglages et transfert de focus lors du changement de bouton. Les coins décoratifs sont masqués quand un statut actif occupe l’aperçu. |
+
+[Capture du Scanner 1.2.3](screenshots/scanner-1.2.3.png).
+
+**Limites :** aucun essai avec une webcam physique, Safari ou un téléphone physique pour ce correctif. L’état Arrêter pendant une capture réelle, les marges de sécurité matérielles et les changements de hauteur propres à Safari restent à vérifier sur appareil. Les tests d’import et la revue du code ne constituent pas une qualification matérielle.
+
+## Historique de qualification 1.2.2 — 9 novembre 2026
 
 Les contrôles portent sur le **HTML compilé**, ouvert dans Chrome sous Linux dans des cadres responsive. Le défilement reste celui du document, avec la restauration de position propre à chaque écran.
 
@@ -97,7 +120,7 @@ La lecture caméra notifie un nouveau résultat sans changer d’écran. Sur mob
 | Windows et ouverture directe `file://` | **Non testés** | QA sur navigateur Linux via `localhost`. La navigation directe vers un fichier est bloquée dans cet environnement de test. |
 | Lecteur d’écran | **Non testé** | Les vérifications statiques et de focus ne remplacent pas une qualification avec une technologie d’assistance. |
 
-Les exemples versionnés sont fictifs. Aucun nouvel appel réseau ni dépendance externe n’avait été ajouté pour la refonte 1.2.0. Le gain de décodage observé sur des fixtures ne constitue pas une promesse de lecture de tous les codes ni une mesure de cadence sur webcam. Les limites matérielles ci-dessus restent applicables à 1.2.1 et 1.2.2 ; le contrôle de la photo signalée est décrit séparément dans la qualification 1.2.1.
+Les exemples versionnés sont fictifs. Aucun nouvel appel réseau ni dépendance externe n’avait été ajouté pour la refonte 1.2.0. Le gain de décodage observé sur des fixtures ne constitue pas une promesse de lecture de tous les codes ni une mesure de cadence sur webcam. Les limites matérielles ci-dessus restent applicables à 1.2.1, 1.2.2 et 1.2.3 ; le contrôle de la photo signalée est décrit séparément dans la qualification 1.2.1.
 
 ## Couverture automatisée de 1.2.1
 

@@ -2,7 +2,9 @@
 
 **Lecteur gratuit de Data Matrix, QR codes et codes-barres, toutes marques, avec webcam ou fichier image.**
 
-ScanLibre 1.2.2 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+ScanLibre 1.2.3 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+
+La version 1.2.3 simplifie Scanner autour de l’aperçu et des actions **Caméra / Image**. **Format**, **Profil de lecture**, **Zone de recherche** et **Lecture renforcée** sont réunis dans **Réglages → Lecture**. Le bouton caméra laisse place à **Arrêter** pendant la capture ou à **Annuler** pendant le démarrage et l’import. Les informations de la caméra et de la dernière analyse se trouvent dans **Réglages → Caméra**.
 
 La version 1.2.2 fixe la navigation mobile au bord inférieur, sur toute la largeur, et retire le raccourci Réglages caméra redondant à côté du choix de zone. Le contenu défile au-dessus de la barre ; les quatre écrans restent accessibles en permanence.
 
@@ -23,8 +25,8 @@ La page hébergée nécessite une connexion Internet pour être chargée ; son a
 1. Récupérer le **pack PROD** dans les [Releases du projet](https://github.com/M4D135/ScanLibre/releases).
 2. Extraire l’archive dans un dossier local.
 3. Ouvrir **`ScanLibre.html` dans Microsoft Edge ou Google Chrome**. Si le double-clic utilise une autre application, choisir **Ouvrir avec**.
-4. Attendre l’état **Prêt · hors ligne**.
-5. Cliquer sur **Activer la webcam** ou **Ouvrir une image**.
+4. Une fois le lecteur chargé, cliquer sur **Activer la webcam** ou **Ouvrir une image** (**Caméra / Image** sur mobile).
+5. Pour ajuster la détection, ouvrir **Réglages → Lecture**.
 
 Le fichier doit être téléchargé et ouvert dans le navigateur. Un aperçu de fichier dans GitHub, une messagerie ou une autre application peut empêcher l’accès à la caméra.
 
@@ -34,9 +36,11 @@ Trois images de démonstration entièrement fictives sont fournies dans `example
 
 ## Navigation sur PC et mobile
 
-Sur PC, le lecteur réunit l’aperçu et le résultat dans des panneaux alignés. Les trois dernières lectures et les compteurs de lectures/codes distincts restent accessibles à côté du résultat. **Historique** regroupe recherche, consultation, copie et export ; **Réglages** regroupe caméra, son, copie automatique et préférences d’affichage.
+Le panneau de lecture de **Scanner** contient l’aperçu et deux actions : **Caméra** et **Image** sur mobile, **Activer la webcam** et **Ouvrir une image** sur PC. Les menus de détection sont regroupés dans **Réglages → Lecture**.
 
-Sur mobile, la barre fixée en bas occupe toute la largeur et donne accès à quatre écrans : **Scanner**, **Résultat**, **Historique** et **Réglages**. Son fond englobe la zone de sécurité indiquée par le navigateur pour la barre d’accueil de l’appareil. Le contenu reste défilant au-dessus, jusqu’aux dernières commandes. L’accès aux réglages depuis Scanner se fait par l’onglet **Réglages** ; le bouton supplémentaire à côté de **Zone** est masqué sur mobile.
+Sur PC, le lecteur réunit l’aperçu et le résultat dans des panneaux alignés. Les trois dernières lectures et les compteurs de lectures/codes distincts restent accessibles à côté du résultat. **Historique** regroupe recherche, consultation, copie et export ; **Réglages** regroupe lecture, caméra, son, copie automatique et préférences d’affichage.
+
+Sur mobile, la barre fixée en bas occupe toute la largeur et donne accès à quatre écrans : **Scanner**, **Résultat**, **Historique** et **Réglages**. Son fond englobe la zone de sécurité indiquée par le navigateur pour la barre d’accueil de l’appareil. Le contenu reste défilant au-dessus, jusqu’aux dernières commandes. L’accès aux paramètres de lecture et de caméra depuis Scanner se fait par l’onglet **Réglages**.
 
 Une lecture caméra affiche une notification ouvrant le résultat, sans quitter le scanner automatiquement. Après un import d’images réussi, le résultat s’ouvre à la fin du lot uniquement si l’écran Scanner est toujours actif ; un autre écran consulté pendant l’import reste affiché.
 
@@ -44,13 +48,15 @@ Le bouton **Afficher** d’une entrée de l’historique et les lectures récent
 
 ![Interface PC de ScanLibre 1.2.0 avec des codes fictifs](docs/screenshots/desktop-1.2.0.png)
 
+[Capture du Scanner épuré 1.2.3](docs/screenshots/scanner-1.2.3.png) — aperçu mobile actuel.
+
 [Capture de la navigation mobile 1.2.2](docs/screenshots/mobile-nav-1.2.2.png) — aperçu dans un cadre responsive de Chrome. La capture PC ci-dessus et [l’ancienne capture mobile](docs/screenshots/mobile-qa-1.2.0.png) datent de la qualification de l’interface 1.2.0 du 7 novembre 2026. Les contrôles responsive ne remplacent pas une qualification sur Safari et sur un téléphone physique.
 
 ## Lire une étiquette
 
 ### Avec la webcam
 
-Cliquer sur **Activer la webcam** et accepter la demande d’accès du navigateur. Le choix de la caméra se trouve dans **Réglages**. Montrer le code entier avec une petite marge autour ; attendre une image nette avant de le rapprocher davantage. Sur une coque métallique, modifier légèrement l’angle pour éviter les reflets.
+Cliquer sur **Activer la webcam** (**Caméra** sur mobile) et accepter la demande d’accès du navigateur. Le choix de la caméra se trouve dans **Réglages → Caméra** ; le menu **Format** est dans **Réglages → Lecture**. Montrer le code entier avec une petite marge autour ; attendre une image nette avant de le rapprocher davantage. Sur une coque métallique, modifier légèrement l’angle pour éviter les reflets.
 
 | Mode | Utilisation |
 | --- | --- |
@@ -61,15 +67,17 @@ Cliquer sur **Activer la webcam** et accepter la demande d’accès du navigateu
 
 Un Data Matrix utilise un format différent d’un QR code. Pour une étiquette de matériel non reconnue en mode QR, choisir **Data Matrix** ou **Tous les formats**.
 
-La lecture est automatique. Un contour signale les codes reconnus ; le texte apparaît dans le panneau ou l’écran **Résultat**. Le format, le profil de lecture et la zone analysée sont accessibles directement dans le lecteur. Un code qui reste devant la webcam ne produit pas une nouvelle lecture à chaque image. Pour lire de nouveau ce même code, le retirer quelques secondes puis le représenter.
+La lecture est automatique. Un contour signale les codes reconnus ; le texte apparaît dans le panneau ou l’écran **Résultat**. Le format, le profil de lecture, la zone analysée et la lecture renforcée sont accessibles dans **Réglages → Lecture**. Un code qui reste devant la webcam ne produit pas une nouvelle lecture à chaque image. Pour lire de nouveau ce même code, le retirer quelques secondes puis le représenter.
 
-**Arrêter** ou **Échap** libère la webcam. Elle s’arrête également en ouvrant **Historique**, en ouvrant **Résultat** sur mobile ou lorsque l’onglet passe en arrière-plan ; au retour, cliquer de nouveau sur **Activer la webcam**. Elle reste active dans **Réglages**, avec le même aperçu vidéo pour observer les ajustements. L’application ne demande pas d’accès au microphone.
+Dans Scanner, **Annuler** remplace le bouton caméra pendant son ouverture ; **Arrêter** le remplace une fois la capture active. **Arrêter** ou **Échap** libère la webcam. Elle s’arrête également en ouvrant **Historique**, en ouvrant **Résultat** sur mobile ou lorsque l’onglet passe en arrière-plan ; au retour, cliquer de nouveau sur **Activer la webcam** (**Caméra** sur mobile). Elle reste active dans **Réglages**, avec le même aperçu vidéo pour observer les ajustements. L’application ne demande pas d’accès au microphone.
 
 ### Régler la caméra et améliorer la lecture
 
-Dans **Réglages**, la définition préférée est **Full HD**. Le menu propose aussi une sélection automatique, **HD** et **Ultra HD**, ainsi que 15 ou 30 images/s. Ce sont des préférences : la définition et la cadence réellement obtenues sont affichées près de l’aperçu. Changer ces menus pendant la lecture relance proprement la caméra.
+Dans **Réglages → Caméra**, la définition préférée est **Full HD**. Le menu propose aussi une sélection automatique, **HD** et **Ultra HD**, ainsi que 15 ou 30 images/s. Ce sont des préférences : la définition et la cadence réellement obtenues sont affichées sous l’aperçu de cette section. Changer ces menus pendant la lecture relance proprement la caméra.
 
 Les commandes matérielles apparaissent après activation de la caméra : mise au point automatique ou manuelle, distance de mise au point, zoom, exposition, luminosité, contraste, netteté, balance des blancs et éclairage intégré selon le modèle. Seules les fonctions exposées au navigateur sont proposées. Une commande manuelle dépendant d’un mode automatique reste désactivée tant que ce mode n’est pas passé en manuel. Un réglage refusé ou ignoré est signalé ; l’affichage reprend la valeur mesurée. **Réinitialiser** restaure les valeurs de départ de cette session caméra.
+
+Les paramètres de détection se trouvent dans la carte **Lecture**, en tête de **Réglages**. Le menu **Profil de lecture** propose :
 
 | Profil | Comportement |
 | --- | --- |
@@ -83,7 +91,7 @@ Après une lecture simple infructueuse, la récupération locale compare le code
 
 La compatibilité Data Matrix ne concerne qu’un terminateur ASCII redondant juste avant le remplissage final. Elle exige une nouvelle extraction des modules, une validation Reed–Solomon indépendante, des octets de remplissage conformes et un texte exactement identique aux octets décodés. Les autres erreurs de format et les codes dont la correction d’erreurs échoue restent refusés.
 
-La métrique près de l’aperçu indique la définition analysée et la durée de la dernière analyse. La cadence de capture caméra et la cadence de décodage sont distinctes : ScanLibre attend la fin d’une analyse avant de commencer la suivante.
+Dans **Réglages → Caméra**, **Dernière analyse** indique la définition analysée et la durée de la dernière analyse, y compris après un import d’image. La cadence de capture caméra et la cadence de décodage sont distinctes : ScanLibre attend la fin d’une analyse avant de commencer la suivante.
 
 ### Volume du bip et affichage
 
@@ -93,7 +101,7 @@ Le thème sombre/clair, la taille d’interface (100 à 200 %), la densité **Co
 
 ### Avec une image
 
-Utiliser **Ouvrir une image**, déposer les fichiers dans la fenêtre ou coller une capture avec **Ctrl+V**. Les formats conseillés sont PNG, JPEG, WebP et BMP, selon les capacités du navigateur.
+Utiliser **Ouvrir une image** (**Image** sur mobile), déposer les fichiers dans la fenêtre ou coller une capture avec **Ctrl+V**. Les formats conseillés sont PNG, JPEG, WebP et BMP, selon les capacités du navigateur.
 
 | Limite | Valeur |
 | --- | --- |
@@ -102,7 +110,7 @@ Utiliser **Ouvrir une image**, déposer les fichiers dans la fenêtre ou coller 
 | Définition d’une image | 60 mégapixels maximum |
 | Dimension utilisée pour le décodage | Réduction proportionnelle à 4 096 pixels sur le plus grand côté si nécessaire |
 
-Les images sont lues l’une après l’autre. Le lecteur affiche les erreurs éventuelles et conserve les résultats des autres images du lot. Un import lancé depuis un autre écran ouvre Scanner ; sur mobile, le résultat s’ouvre après la fin d’un lot réussi si Scanner est toujours affiché.
+Les images sont lues l’une après l’autre. Pendant l’import, **Annuler** remplace le bouton caméra dans Scanner et permet d’interrompre le traitement. Le lecteur affiche les erreurs éventuelles et conserve les résultats des images déjà lues. Un import lancé depuis un autre écran ouvre Scanner ; sur mobile, le résultat s’ouvre après la fin d’un lot réussi si Scanner est toujours affiché.
 
 ## Copier les informations
 
@@ -158,11 +166,11 @@ Le fichier téléchargé ne démarre aucun serveur et n’ouvre aucun port local
 
 | Symptôme | Vérification utile |
 | --- | --- |
-| Aucun code reconnu | Choisir **Tous les formats** ou **Data Matrix**, montrer tout le code, vérifier la netteté et les reflets. Essayer aussi une photo nette pour distinguer un problème d’image d’un problème de caméra. |
-| Data Matrix très pâle | Utiliser **Équilibré** ou **Précision** avec **Lecture renforcée** activée. La correction locale est automatique ; conserver le code entier et ses marges, puis ajuster l’angle si un reflet masque des modules. |
+| Aucun code reconnu | Dans **Réglages → Lecture**, choisir **Tous les formats** ou **Data Matrix**, montrer tout le code, vérifier la netteté et les reflets. Essayer aussi une photo nette pour distinguer un problème d’image d’un problème de caméra. |
+| Data Matrix très pâle | Dans **Réglages → Lecture**, utiliser **Équilibré** ou **Précision** avec **Lecture renforcée** activée. La correction locale est automatique ; conserver le code entier et ses marges, puis ajuster l’angle si un reflet masque des modules. |
 | Demande caméra refusée | Vérifier l’autorisation caméra du site ou du fichier dans le navigateur et les autorisations du navigateur dans les réglages de l’appareil. Une règle d’entreprise peut empêcher cet accès. |
 | Webcam occupée | Fermer Caméra Windows, Teams ou l’application qui utilise déjà la webcam, puis réessayer. |
-| Caméra arrêtée après une navigation | Revenir dans Scanner et cliquer sur **Activer la webcam**. L’arrêt est prévu en arrière-plan, dans Historique et dans Résultat sur mobile. |
+| Caméra arrêtée après une navigation | Revenir dans Scanner et cliquer sur **Activer la webcam** (**Caméra** sur mobile). L’arrêt est prévu en arrière-plan, dans Historique et dans Résultat sur mobile. |
 | Copie refusée | Utiliser la copie manuelle proposée et **Ctrl+C**, puis **Ctrl+V** dans le logiciel de destination. |
 | Historique non conservé | Vérifier l’option **Conserver l’historique**. Si le stockage du navigateur n’est pas disponible, exporter le CSV avant de fermer la fenêtre. |
 | Moteur indisponible ou aperçu intégré | Ouvrir le lien hébergé directement dans le navigateur ou le fichier HTML complet téléchargé, puis recharger. |

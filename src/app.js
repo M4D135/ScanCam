@@ -24,7 +24,7 @@ const ui = Object.fromEntries([
   'beepVolume', 'beepVolumeValue', 'testSound', 'uiScale',
   'motionPreference', 'densityPreference', 'resultPlaceholder', 'resultContent',
   'recentReads', 'emptyRecent', 'clearConfirm', 'confirmClearHistory', 'cancelClearHistory',
-  'closeHelp',
+  'closeHelp', 'stopCameraLabel',
 ].map((id) => [id, $(id)]));
 
 const state = {
@@ -66,8 +66,17 @@ function status(text, kind = 'idle') {
 }
 
 function setControls() {
+  const focused = document.activeElement;
+  const active = state.starting || state.running || state.importing;
   ui.startCamera.disabled = !state.ready || state.starting || state.running || state.importing;
-  ui.stopCamera.disabled = !(state.starting || state.running || state.importing);
+  ui.stopCamera.disabled = !active;
+  ui.startCamera.hidden = active;
+  ui.stopCamera.hidden = !active;
+  ui.stopCameraLabel.textContent = state.running ? 'Arrêter' : 'Annuler';
+  const stopLabel = state.importing ? 'Annuler l’import d’images'
+    : state.starting ? 'Annuler l’ouverture de la caméra' : 'Arrêter la caméra';
+  ui.stopCamera.setAttribute('aria-label', stopLabel);
+  ui.stopCamera.title = stopLabel;
   ui.importImage.disabled = !state.ready || state.importing || state.starting;
   ui.cameraSelect.disabled = state.starting || state.importing;
   ui.formatSelect.disabled = state.importing;
@@ -81,6 +90,9 @@ function setControls() {
     if (control) button.disabled = control.disabled;
   }
   workspace?.setActivity({ running: state.running, starting: state.starting, importing: state.importing });
+  const nextFocus = focused === ui.startCamera && active ? ui.stopCamera
+    : focused === ui.stopCamera && !active ? ui.startCamera : null;
+  if (nextFocus && !nextFocus.disabled && nextFocus.getClientRects().length) nextFocus.focus({ preventScroll: true });
 }
 
 function storageGet(key) {

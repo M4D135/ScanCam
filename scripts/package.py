@@ -18,20 +18,28 @@ GUIDE = f"""SCANLIBRE {VERSION} — GUIDE D'UTILISATION
 1. Extraire entièrement ce ZIP dans un dossier de votre PC.
 2. Clic droit sur ScanLibre.html > Ouvrir avec > Microsoft Edge ou Google Chrome.
 3. Cliquer sur Activer la webcam et autoriser la caméra, ou Ouvrir une image.
-4. Choisir Tous les formats, Data Matrix, QR code ou Codes-barres 1D selon le code.
+   Sur mobile, ces boutons s'appellent Caméra et Image.
+4. Si nécessaire, ouvrir Réglages > Lecture pour choisir le format :
+   Tous les formats, Data Matrix, QR code ou Codes-barres 1D.
 
 Le moteur est inclus. Aucun compte, abonnement, installation de Python,
 de Node.js ou serveur local n'est nécessaire pour utiliser ce fichier HTML.
 
 Navigation sur PC : Scanner affiche l'aperçu et le résultat côte à côte, les
 trois dernières lectures et les compteurs. Historique et Réglages ont leur écran.
+Le panneau de lecture contient l'aperçu et les actions Caméra / Image
+(Activer la webcam / Ouvrir une image sur PC).
 Sur mobile : la barre ancrée au bas de l’écran ouvre Scanner, Résultat,
 Historique ou Réglages. Le contenu défile au-dessus de cette barre.
+Dans Scanner, le bouton caméra devient Arrêter pendant la capture, ou Annuler
+pendant l'ouverture de la caméra et l'import d'images. Il revient à son état
+initial après l'arrêt, l'annulation ou la fin de l'import.
 Un code lu par caméra affiche une notification, sans quitter Scanner.
 Après un import réussi, Résultat s'ouvre à la fin du lot sur mobile, uniquement
 si Scanner est toujours affiché. Afficher dans l'historique ouvre aussi un résultat.
 
-Lecture : les choix du format, du profil et de la zone sont dans Scanner.
+Lecture : ouvrir la carte Lecture, en tête de Réglages, pour choisir le format,
+le profil de lecture, la zone de recherche et l'option Lecture renforcée.
 Essayer Précision et la zone centrale pour une petite étiquette à la caméra.
 Les images importées sont toujours analysées en entier.
 Les profils Équilibré et Précision renforcent aussi le contraste local des
@@ -41,10 +49,12 @@ Copie : contenu complet, numéro de série ou référence produit.
 Les champs nommés (S/N, P/N, serial, product...) et certaines paires structurées
 sont reconnus sans supposer une marque. Sinon le contenu complet est conservé.
 
-Caméra : ouvrir Réglages pour choisir la caméra, sa résolution et sa cadence.
+Caméra : ouvrir Réglages > Caméra pour choisir la caméra, sa résolution et sa cadence.
 L'aperçu reste actif dans cet écran. Après activation, les commandes proposées
 par le matériel apparaissent : mise au point, zoom, exposition, etc.
-Full HD est proposé au départ ; la définition réellement obtenue est affichée.
+Full HD est proposé au départ. Sous l'aperçu de cette section, Caméra indique
+les informations de capture réellement obtenues ; Dernière analyse indique
+la définition analysée et sa durée, y compris après un import d'image.
 Réinitialiser restaure les valeurs de départ de la session caméra.
 
 Son : dans Réglages, ajuster Volume du bip entre 0 et 100 %, puis Tester le son.
