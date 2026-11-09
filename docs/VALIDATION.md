@@ -1,8 +1,32 @@
-# Validation de ScanLibre 1.2.1
+# Validation de ScanLibre 1.2.2
 
-État de qualification du **9 novembre 2026**. La version 1.2.1 corrige la lecture de Data Matrix pâles et un cas précis de terminaison non conforme. Les contrôles de la refonte d’interface 1.2.0 sont conservés plus bas avec leur date ; ils n’ont pas tous été répétés pour ce correctif.
+État de qualification du **9 novembre 2026**. La version 1.2.2 corrige l’ancrage de la navigation mobile et supprime le raccourci Réglages caméra redondant sur ce format. Elle ne modifie pas le moteur de lecture. Les qualifications du moteur 1.2.1 et de l’interface 1.2.0 sont conservées plus bas avec leur version et leur date ; leurs résultats ne constituent pas de nouveaux essais de 1.2.2.
 
-## Qualification 1.2.1 — 9 novembre 2026
+## Qualification 1.2.2 — 9 novembre 2026
+
+Les contrôles portent sur le **HTML compilé**, ouvert dans Chrome sous Linux dans des cadres responsive. Le défilement reste celui du document, avec la restauration de position propre à chaque écran.
+
+| Périmètre | Résultat | Portée |
+| --- | --- | --- |
+| Suite `npm test` relancée en 1.2.2 | **49 tests réussis, 1 ignoré, aucun échec** | 50 tests au total. Le test facultatif sur photo locale reste ignoré ; la suite existante passe après ce correctif de présentation. |
+| Barre mobile ancrée | **Contrôlée** | Barre fixée au bord inférieur, sans retrait horizontal ni inférieur et sans rayon extérieur. Hauteur de commandes de 65 px ; la zone de sécurité fournie par le navigateur s’ajoute à son padding intérieur. |
+| Scanner en petit écran | **Sans débordement observé** | Cadres de 390 × 844 et 320 × 640 px. La barre rejoint exactement le bas de la zone disponible ; le raccourci Réglages caméra à côté de Zone est masqué et le choix de zone occupe l’espace libéré. |
+| Navigation entre écrans | **Fonctionnelle** | Scanner, Résultat, Historique et Réglages sont accessibles depuis les quatre onglets de la barre. |
+| Fin de Réglages après défilement | **Accessible** | À 320 × 640 px, défilement maximal de 1 664 px pour une hauteur de document de 2 304 px. Le bas du pied de page est à 575 px, au niveau du haut de la barre ; le bas de la barre reste à 640 px. Aucun contenu final n’est masqué. |
+| Présentation paysage | **Sans débordement observé** | Cadre de 844 × 390 px : barre de x = 0 à x = 837, correspondant aux 837 px disponibles après la barre de défilement de 7 px. Le bord inférieur reste à 390 px. |
+| Agrandissement de l’interface à 200 % | **Sans débordement horizontal observé** | Réglages dans un cadre de 390 × 844 px : largeur de document de 383 px, soit la largeur disponible après la barre de défilement de 7 px. La navigation garde une hauteur de 65 px et son bord inférieur à 844 px. Échelle remise à 100 % en fin de contrôle. |
+| Thèmes clair et sombre | **Changement fonctionnel** | Bascule entre les deux thèmes contrôlée dans l’interface. |
+| Marges de sécurité et notifications | **Revue CSS effectuée** | La hauteur réservée au défilement et la position des toasts utilisent la même variable que la barre. Les marges de sécurité gauche, droite et basse sont prises en compte dans son padding. Leur valeur matérielle n’a pas été exercée dans ces cadres. |
+
+[Capture de la navigation mobile 1.2.2](screenshots/mobile-nav-1.2.2.png).
+
+Le site principal est [scan.estrasse.fr](https://scan.estrasse.fr). Le [site de test privé](https://scanlibre-test-m4d135.garden-lake-2660.chatgpt.site) reste une alternative avec connexion au compte ChatGPT associé au projet. Les mesures ci-dessus concernent le build local, pas une mesure de disponibilité de ces hébergements.
+
+**Limites :** aucun essai sur Safari ou sur un iPhone/Android physique pour ce correctif. La zone de sécurité matérielle, la barre d’accueil, les changements de hauteur liés aux commandes de Safari et le clavier virtuel restent à vérifier sur l’appareil. Le seuil mobile reste de 900 px ; au-delà, y compris sur un téléphone en paysage large, la disposition PC s’applique.
+
+## Historique de qualification 1.2.1 — 9 novembre 2026
+
+La version 1.2.1 corrigeait la lecture de Data Matrix pâles et un cas précis de terminaison non conforme. Les résultats ci-dessous ont été obtenus lors de sa qualification, avant la modification de navigation 1.2.2.
 
 | Périmètre | Résultat | Portée |
 | --- | --- | --- |
@@ -73,7 +97,7 @@ La lecture caméra notifie un nouveau résultat sans changer d’écran. Sur mob
 | Windows et ouverture directe `file://` | **Non testés** | QA sur navigateur Linux via `localhost`. La navigation directe vers un fichier est bloquée dans cet environnement de test. |
 | Lecteur d’écran | **Non testé** | Les vérifications statiques et de focus ne remplacent pas une qualification avec une technologie d’assistance. |
 
-Les exemples versionnés sont fictifs. Aucun nouvel appel réseau ni dépendance externe n’avait été ajouté pour la refonte 1.2.0. Le gain de décodage observé sur des fixtures ne constitue pas une promesse de lecture de tous les codes ni une mesure de cadence sur webcam. Les limites matérielles ci-dessus restent applicables à 1.2.1 ; le contrôle de la nouvelle photo est décrit séparément dans sa qualification.
+Les exemples versionnés sont fictifs. Aucun nouvel appel réseau ni dépendance externe n’avait été ajouté pour la refonte 1.2.0. Le gain de décodage observé sur des fixtures ne constitue pas une promesse de lecture de tous les codes ni une mesure de cadence sur webcam. Les limites matérielles ci-dessus restent applicables à 1.2.1 et 1.2.2 ; le contrôle de la photo signalée est décrit séparément dans la qualification 1.2.1.
 
 ## Couverture automatisée de 1.2.1
 
@@ -141,7 +165,9 @@ Sans `SCANLIBRE_TEST_IMAGE`, le test est ignoré. Sans `SCANLIBRE_TEST_EXPECTED`
 | Essai | Résultat attendu |
 | --- | --- |
 | Ouvrir le fichier téléchargé avec Edge ou Chrome | État Prêt · hors ligne ; import fonctionnel sans connexion. |
-| Ouvrir la version hébergée sur un téléphone ou une tablette | Connexion au site privé si demandée, quatre écrans accessibles ; vérifier les autorisations dans le navigateur réel. |
+| Ouvrir [scan.estrasse.fr](https://scan.estrasse.fr) sur un téléphone ou une tablette | Quatre écrans accessibles ; vérifier les autorisations dans le navigateur réel. Le site de test privé reste disponible en alternative avec connexion si demandée. |
+| Faire défiler Scanner et Réglages sur mobile | Barre ancrée au bord inférieur de la zone web, sans capsule flottante ; dernières commandes accessibles et aucun raccourci Réglages caméra redondant à côté de Zone. |
+| Tourner l’appareil, ouvrir le clavier et afficher/masquer les commandes de Safari | Navigation accessible dans la zone visible, marges de sécurité adaptées à l’appareil et champs utilisables ; confirmer ce comportement sur le navigateur réel. |
 | Activer une webcam | Aperçu, définition et cadence réelles affichés ; aucune demande de microphone. |
 | Ouvrir Réglages pendant la lecture | Le même aperçu vidéo reste actif et visible ; seules les capacités annoncées sont proposées, une valeur inconnue est désactivée. |
 | Passer la mise au point en manuel, régler la distance, réactiver l’automatique | Netteté ajustable si le matériel le permet ; aucune distance manuelle imposée après réactivation de l’autofocus. |

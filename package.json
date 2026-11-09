@@ -1,6 +1,6 @@
 {
   "name": "scanlibre",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Lecteur local de Data Matrix, QR codes et codes-barres, sans installation.",
   "private": true,
   "type": "module",

@@ -1,4 +1,4 @@
-ScanLibre 1.2.1 — Notices des composants tiers
+ScanLibre 1.2.2 — Notices des composants tiers
 =============================================
 
 Le fichier autonome ScanLibre.html contient le moteur de lecture et ces notices.

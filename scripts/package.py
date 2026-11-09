@@ -25,7 +25,8 @@ de Node.js ou serveur local n'est nécessaire pour utiliser ce fichier HTML.
 
 Navigation sur PC : Scanner affiche l'aperçu et le résultat côte à côte, les
 trois dernières lectures et les compteurs. Historique et Réglages ont leur écran.
-Sur mobile : la barre du bas ouvre Scanner, Résultat, Historique ou Réglages.
+Sur mobile : la barre ancrée au bas de l’écran ouvre Scanner, Résultat,
+Historique ou Réglages. Le contenu défile au-dessus de cette barre.
 Un code lu par caméra affiche une notification, sans quitter Scanner.
 Après un import réussi, Résultat s'ouvre à la fin du lot sur mobile, uniquement
 si Scanner est toujours affiché. Afficher dans l'historique ouvre aussi un résultat.
@@ -59,7 +60,7 @@ la copie enregistrée mais conserve la liste de la session ouverte.
 Vider demande confirmation dans l'écran Historique ; Annuler garde les données.
 Exporter CSV contient tout l'historique, même filtré (maximum 500 codes distincts).
 
-Le dossier examples contient deux images synthétiques pour essayer le lecteur.
+Le dossier examples contient trois images synthétiques pour essayer le lecteur.
 
 Si la webcam est occupée, fermer Caméra Windows, Teams ou l'autre application.
 Si le code reste flou, reculer légèrement ; éviter les reflets sur le métal.
@@ -72,8 +73,9 @@ Cette version utilise le navigateur. Ce pack ne contient pas d'exécutable EXE.
 L'image est analysée sur l'appareil ; aucun fichier n'est envoyé à un serveur.
 Un lien détecté ne s'ouvre que sur une action explicite de votre part.
 
-Test en ligne : https://scanlibre-test-m4d135.garden-lake-2660.chatgpt.site
-Le site est privé : utiliser le compte ChatGPT associé au projet si demandé.
+Site : https://scan.estrasse.fr/
+Alternative privée : https://scanlibre-test-m4d135.garden-lake-2660.chatgpt.site
+Pour cette alternative, utiliser le compte ChatGPT associé au projet si demandé.
 Une connexion est nécessaire pour charger cette page. Le fichier HTML du pack
 fonctionne sans compte et hors ligne ; la mise en cache du site n'est pas garantie.
 
@@ -100,7 +102,7 @@ dev = OUTPUT / f"ScanLibre-{VERSION}-DEV.zip"
 with ZipFile(dev, "w", ZIP_DEFLATED, compresslevel=9) as archive:
     for name in ("README.md", "LICENSE", "THIRD_PARTY_NOTICES.txt", "package.json", "package-lock.json", ".gitignore"):
         archive.write(ROOT / name, f"ScanLibre-DEV/{name}")
-    for folder in ("src", "scripts", "tests", "docs", "licenses", "examples"):
+    for folder in ("src", "scripts", "tests", "docs", "licenses", "examples", "deploy", ".github"):
         for path in files_in(folder):
             archive.write(path, f"ScanLibre-DEV/{path.relative_to(ROOT).as_posix()}")
     archive.write(READER, "ScanLibre-DEV/dist/ScanLibre.html")

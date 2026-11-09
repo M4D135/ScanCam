@@ -2,17 +2,21 @@
 
 **Lecteur gratuit de Data Matrix, QR codes et codes-barres, toutes marques, avec webcam ou fichier image.**
 
-ScanLibre 1.2.1 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+ScanLibre 1.2.2 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
 
-La version 1.2.1 améliore la lecture des Data Matrix pâles sur un fond irrégulier. Elle ajoute aussi une compatibilité ciblée pour un terminateur redondant rencontré sur certaines étiquettes, avec vérification indépendante de la correction d’erreurs et concordance exacte du contenu décodé.
+La version 1.2.2 fixe la navigation mobile au bord inférieur, sur toute la largeur, et retire le raccourci Réglages caméra redondant à côté du choix de zone. Le contenu défile au-dessus de la barre ; les quatre écrans restent accessibles en permanence.
+
+Le moteur conserve les améliorations de la version 1.2.1 : récupération des Data Matrix pâles sur un fond irrégulier et compatibilité ciblée pour un terminateur redondant rencontré sur certaines étiquettes, avec vérification indépendante de la correction d’erreurs et concordance exacte du contenu décodé.
 
 ## Démarrer
 
-### Version de test en ligne
+### Version en ligne
 
-[Ouvrir ScanLibre](https://scanlibre-test-m4d135.garden-lake-2660.chatgpt.site) dans un navigateur complet, puis autoriser la caméra ou ouvrir une image. Ce site de test est privé : utiliser le même compte ChatGPT que celui associé au projet si la page demande une connexion. Aucun téléchargement n’est nécessaire pour l’essayer.
+[Ouvrir ScanLibre sur scan.estrasse.fr](https://scan.estrasse.fr) dans un navigateur complet, puis autoriser la caméra ou ouvrir une image. C’est l’adresse principale du lecteur en ligne ; aucun téléchargement n’est nécessaire pour l’essayer.
 
-La page hébergée nécessite une connexion pour être chargée ; son analyse des codes reste locale. Le fonctionnement hors ligne du fichier téléchargé ne constitue pas une garantie de mise en cache hors ligne du site.
+Le [site de test privé](https://scanlibre-test-m4d135.garden-lake-2660.chatgpt.site) reste disponible en alternative. Il demande le compte ChatGPT associé au projet si la session n’est pas déjà ouverte.
+
+La page hébergée nécessite une connexion Internet pour être chargée ; son analyse des codes reste locale. Le fonctionnement hors ligne du fichier téléchargé ne constitue pas une garantie de mise en cache hors ligne du site.
 
 ### Fichier HTML autonome
 
@@ -32,13 +36,15 @@ Trois images de démonstration entièrement fictives sont fournies dans `example
 
 Sur PC, le lecteur réunit l’aperçu et le résultat dans des panneaux alignés. Les trois dernières lectures et les compteurs de lectures/codes distincts restent accessibles à côté du résultat. **Historique** regroupe recherche, consultation, copie et export ; **Réglages** regroupe caméra, son, copie automatique et préférences d’affichage.
 
-Sur mobile, la barre du bas donne accès à quatre écrans : **Scanner**, **Résultat**, **Historique** et **Réglages**. Une lecture caméra affiche une notification ouvrant le résultat, sans quitter le scanner automatiquement. Après un import d’images réussi, le résultat s’ouvre à la fin du lot uniquement si l’écran Scanner est toujours actif ; un autre écran consulté pendant l’import reste affiché.
+Sur mobile, la barre fixée en bas occupe toute la largeur et donne accès à quatre écrans : **Scanner**, **Résultat**, **Historique** et **Réglages**. Son fond englobe la zone de sécurité indiquée par le navigateur pour la barre d’accueil de l’appareil. Le contenu reste défilant au-dessus, jusqu’aux dernières commandes. L’accès aux réglages depuis Scanner se fait par l’onglet **Réglages** ; le bouton supplémentaire à côté de **Zone** est masqué sur mobile.
+
+Une lecture caméra affiche une notification ouvrant le résultat, sans quitter le scanner automatiquement. Après un import d’images réussi, le résultat s’ouvre à la fin du lot uniquement si l’écran Scanner est toujours actif ; un autre écran consulté pendant l’import reste affiché.
 
 Le bouton **Afficher** d’une entrée de l’historique et les lectures récentes ouvrent le résultat correspondant. Le retour à l’historique conserve la recherche et la position dans la liste.
 
 ![Interface PC de ScanLibre 1.2.0 avec des codes fictifs](docs/screenshots/desktop-1.2.0.png)
 
-[Capture du contrôle mobile à 390 × 844 px](docs/screenshots/mobile-qa-1.2.0.png) — aperçu dans un cadre responsive de Chrome, avec des données fictives. Ces captures datent de la qualification de l’interface 1.2.0 du 7 novembre 2026.
+[Capture de la navigation mobile 1.2.2](docs/screenshots/mobile-nav-1.2.2.png) — aperçu dans un cadre responsive de Chrome. La capture PC ci-dessus et [l’ancienne capture mobile](docs/screenshots/mobile-qa-1.2.0.png) datent de la qualification de l’interface 1.2.0 du 7 novembre 2026. Les contrôles responsive ne remplacent pas une qualification sur Safari et sur un téléphone physique.
 
 ## Lire une étiquette
 
@@ -146,7 +152,7 @@ Les guillemets, accents et sauts de ligne sont conservés. Les valeurs susceptib
 
 Le fichier embarque son JavaScript, ses styles et le moteur WebAssembly. Il n’utilise ni CDN ni API distante pour lire les codes. Une politique de contenu interdit les connexions réseau de l’application avec `connect-src 'none'`. L’ouverture volontaire d’un lien reconnu lance séparément la navigation demandée.
 
-Le fichier téléchargé ne démarre aucun serveur et n’ouvre aucun port local. Une connexion est nécessaire pour télécharger le pack ou installer les dépendances de développement, puis la lecture fonctionne localement. La version hébergée utilise le même lecteur embarqué après le chargement de sa page privée.
+Le fichier téléchargé ne démarre aucun serveur et n’ouvre aucun port local. Une connexion est nécessaire pour télécharger le pack ou installer les dépendances de développement, puis la lecture fonctionne localement. Les versions hébergées utilisent le même lecteur embarqué après le chargement de leur page.
 
 ## Résoudre un problème
 
@@ -160,7 +166,7 @@ Le fichier téléchargé ne démarre aucun serveur et n’ouvre aucun port local
 | Copie refusée | Utiliser la copie manuelle proposée et **Ctrl+C**, puis **Ctrl+V** dans le logiciel de destination. |
 | Historique non conservé | Vérifier l’option **Conserver l’historique**. Si le stockage du navigateur n’est pas disponible, exporter le CSV avant de fermer la fenêtre. |
 | Moteur indisponible ou aperçu intégré | Ouvrir le lien hébergé directement dans le navigateur ou le fichier HTML complet téléchargé, puis recharger. |
-| Le site de test demande une connexion | Utiliser le compte ChatGPT associé au projet ; le site est privé. Le fichier HTML téléchargé fonctionne sans compte. |
+| Le site de test privé demande une connexion | Utiliser le compte ChatGPT associé au projet, ou ouvrir le site principal [scan.estrasse.fr](https://scan.estrasse.fr). Le fichier HTML téléchargé fonctionne sans compte. |
 
 **Qualification :** les vérifications réalisées et leurs limites sont décrites dans [`docs/VALIDATION.md`](docs/VALIDATION.md). Une interface adaptée au mobile ne remplace pas un essai de la caméra et du son sur l’appareil cible.
 
