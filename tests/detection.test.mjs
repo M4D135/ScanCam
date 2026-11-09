@@ -99,6 +99,45 @@ function tiltedFixture(source) {
   return image;
 }
 
+async function paleScene({ angle = 0, inverted = false, hasSymbol = true } = {}) {
+  // An independently generated small symbol on a bright, textured plate. The
+  // dark lower edge broadens the whole-frame histogram, so stretching that
+  // histogram alone cannot recover the faint modules. No production image
+  // transformation is used to construct this input.
+  const text = 'DEMO-PALE-0042';
+  const generated = await writeBarcode(text, { format: 'DataMatrix' });
+  assert.equal(generated.error, '');
+  const symbol = generated.symbol;
+  const width = 960;
+  const height = 720;
+  const scale = 3;
+  const center = { x: 380, y: 430 };
+  const halfWidth = symbol.width * scale / 2;
+  const halfHeight = symbol.height * scale / 2;
+  const radians = angle * Math.PI / 180;
+  const cosine = Math.cos(radians);
+  const sine = Math.sin(radians);
+  const data = new Uint8ClampedArray(width * height * 4);
+  let noise = 0x1684f61d;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      noise = (Math.imul(1664525, noise) + 1013904223) >>> 0;
+      const grain = ((noise >>> 24) / 255 - 0.5) * 4;
+      let shade = y > height * 0.79 ? 35 + x / width * 12 : 206 + x / width * 20 + y / height * 10;
+      const sx = (x - center.x) * cosine + (y - center.y) * sine + halfWidth;
+      const sy = -(x - center.x) * sine + (y - center.y) * cosine + halfHeight;
+      if (hasSymbol && sx >= 0 && sx < halfWidth * 2 && sy >= 0 && sy < halfHeight * 2) {
+        const ink = symbol.data[Math.floor(sy / scale) * symbol.width + Math.floor(sx / scale)] === 0;
+        if (ink) shade += inverted ? 14 : -14;
+      }
+      const pixel = (y * width + x) * 4;
+      data[pixel] = data[pixel + 1] = data[pixel + 2] = Math.round(shade + grain);
+      data[pixel + 3] = 255;
+    }
+  }
+  return { image: { data, width, height }, text, center, halfWidth, halfHeight };
+}
+
 test('le contraste de secours récupère quatre formats que la lecture simple manque', async () => {
   for (const format of ['Code128', 'EAN13', 'DataMatrix', 'QRCode']) {
     const text = format === 'EAN13' ? '5901234123457' : 'INVENTAIRE-00042';
@@ -111,6 +150,58 @@ test('le contraste de secours récupère quatre formats que la lecture simple ma
     assert.equal(results[0].isValid, true);
     assert.deepEqual(image.data, original, 'Le pipeline ne modifie pas les pixels fournis.');
   }
+});
+
+test('les Data Matrix pâles restent lisibles dans une scène à contraste global élevé', async () => {
+  for (const options of [
+    { angle: 0, inverted: false, profile: 'balanced' },
+    { angle: 15, inverted: false, profile: 'balanced' },
+    { angle: 0, inverted: true, profile: 'balanced' },
+    { angle: 15, inverted: true, profile: 'precision' },
+  ]) {
+    const { image, text, center } = await paleScene(options);
+    const original = image.data.slice();
+    assert.deepEqual(await detection.readCodes(image, { mode: 'DataMatrix' }), [], 'La fixture doit nécessiter une récupération locale.');
+    const results = await detection.readFrame(image, {
+      mode: 'DataMatrix', profile: options.profile, budgetMs: 2000,
+    });
+    assert.equal(results.length, 1, `Lecture angle=${options.angle}, inversé=${options.inverted}`);
+    assert.equal(results[0].text, text);
+    assert.equal(results[0].isValid, true);
+    const points = Object.values(results[0].position);
+    const actualCenter = points.reduce((sum, point) => ({ x: sum.x + point.x / 4, y: sum.y + point.y / 4 }), { x: 0, y: 0 });
+    assert.ok(Math.abs(actualCenter.x - center.x) <= 3);
+    assert.ok(Math.abs(actualCenter.y - center.y) <= 3);
+    assert.deepEqual(image.data, original, 'La récupération locale conserve les pixels fournis.');
+  }
+});
+
+test('la récupération locale replace le Data Matrix dans les coordonnées de la zone complète', async () => {
+  const { image, text, center, halfWidth, halfHeight } = await paleScene();
+  const results = await detection.readFrame(image, {
+    mode: 'DataMatrix', profile: 'balanced', region: 'center', budgetMs: 2000,
+  });
+  assert.equal(results.length, 1);
+  assert.equal(results[0].text, text);
+  const expected = {
+    topLeft: { x: center.x - halfWidth, y: center.y - halfHeight },
+    topRight: { x: center.x + halfWidth, y: center.y - halfHeight },
+    bottomRight: { x: center.x + halfWidth, y: center.y + halfHeight },
+    bottomLeft: { x: center.x - halfWidth, y: center.y + halfHeight },
+  };
+  for (const [corner, point] of Object.entries(expected)) {
+    assert.ok(Math.abs(results[0].position[corner].x - point.x) <= 2, `${corner}.x`);
+    assert.ok(Math.abs(results[0].position[corner].y - point.y) <= 2, `${corner}.y`);
+  }
+});
+
+test('la récupération locale respecte le format et ne confond pas le grain du fond avec un code', async () => {
+  const { image } = await paleScene();
+  for (const mode of ['QRCode', 'linear']) {
+    assert.deepEqual(await detection.readFrame(image, { mode, profile: 'precision', budgetMs: 2000 }), []);
+  }
+  const background = (await paleScene({ hasSymbol: false })).image;
+  assert.deepEqual(await detection.readFrame(background, { profile: 'precision', budgetMs: 2000 }), []);
 });
 
 test('le profil précision lit des codes 1D fins inclinés à 45 degrés et replace leurs cadres', async () => {

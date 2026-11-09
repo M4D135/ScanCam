@@ -90,6 +90,62 @@ function stretchContrast(image) {
 }
 
 /**
+ * A global histogram can be dominated by a dark chassis or a bright reflection
+ * even though a small label still has usable local contrast. Compare each pixel
+ * with its 33-pixel neighbourhood instead. A five-level dead band suppresses
+ * surface grain without blurring away the narrow modules of a Data Matrix.
+ *
+ * Keep the scratch image at four megapixels: the Uint32 summed-area table cannot
+ * overflow (maximum sum 1.02e9). Its mapping restores full source coordinates.
+ * The two polarities are generated lazily and only after the original fails.
+ */
+function localContrastPass(image) {
+  const scale = Math.min(1, Math.sqrt(MAX_TRANSFORM_PIXELS / (image.width * image.height)));
+  const width = Math.max(1, Math.floor(image.width * scale));
+  const height = Math.max(1, Math.floor(image.height * scale));
+  const scaleX = image.width / width;
+  const scaleY = image.height / height;
+  const gray = new Uint8Array(width * height);
+  const stride = width + 1;
+  const sums = new Uint32Array(stride * (height + 1));
+  for (let y = 0; y < height; y += 1) {
+    const sy = Math.min(image.height - 1, Math.floor((y + 0.5) * scaleY));
+    const row = (y + 1) * stride;
+    let total = 0;
+    for (let x = 0; x < width; x += 1) {
+      const sx = Math.min(image.width - 1, Math.floor((x + 0.5) * scaleX));
+      const value = luminance(image.data, (sy * image.width + sx) * 4);
+      gray[y * width + x] = value;
+      total += value;
+      sums[row + x + 1] = sums[row - stride + x + 1] + total;
+    }
+  }
+  return {
+    map: ({ x, y }) => ({ x: x * scaleX, y: y * scaleY }),
+    image(inverted = false) {
+      const data = new Uint8ClampedArray(width * height * 4);
+      const radius = 16;
+      for (let y = 0; y < height; y += 1) {
+        const y0 = Math.max(0, y - radius) * stride;
+        const y1 = Math.min(height, y + radius + 1) * stride;
+        const rows = (y1 - y0) / stride;
+        for (let x = 0; x < width; x += 1) {
+          const x0 = Math.max(0, x - radius);
+          const x1 = Math.min(width, x + radius + 1);
+          const mean = (sums[y1 + x1] - sums[y0 + x1] - sums[y1 + x0] + sums[y0 + x0]) / ((x1 - x0) * rows);
+          const pixel = y * width + x;
+          const ink = inverted ? gray[pixel] > mean + 5 : gray[pixel] < mean - 5;
+          const index = pixel * 4;
+          data[index] = data[index + 1] = data[index + 2] = ink ? 0 : 255;
+          data[index + 3] = 255;
+        }
+      }
+      return { data, width, height };
+    },
+  };
+}
+
+/**
  * The usual decoder checks 0/90/180/270 degrees. Rotating once by 45 degrees
  * provides the missing directions for long, short-height linear barcodes.
  * The white padding preserves quiet zones; the inverse maps outlines back.
@@ -178,9 +234,10 @@ const yieldToUi = () => new Promise((resolve) => setTimeout(resolve, 0));
  * Analyse a full RGBA frame or its central guide and return normal decoder
  * results. All positions remain relative to the supplied, unmodified frame.
  *
- * Fast: one pass. Balanced: original then contrast recovery on failure.
- * Precision: at most four passes, adding a diagonal search and an alternative
- * threshold / small-image enlargement. Stop at the first successful pass.
+ * Fast: one pass. Balanced: original, local contrast in both polarities and
+ * global contrast recovery on failure (at most four passes for matrix modes).
+ * Precision adds a diagonal search and an alternative threshold / enlargement
+ * (at most six passes). Stop at the first successful pass or the soft budget.
  *
  * budgetMs is a soft time budget between synchronous WASM calls, not a promise
  * that an individual decoder call can be interrupted. Yielding between passes
@@ -220,10 +277,28 @@ export async function readFrame(image, {
   let results = await attempt(source);
   if (results.length || !hard || profile === 'fast' || !(await canContinue())) return results;
 
+  // Linear codes retain their existing two-line agreement and global contrast
+  // recovery. Matrix recovery is format-filtered by the same decoder options.
+  const local = mode === 'linear' ? null : localContrastPass(source);
+  if (local && now() - started < budgetMs) {
+    const binary = local.image();
+    if (!(await canContinue())) return [];
+    results = await attempt(binary, { binarizer: 'FixedThreshold' }, local.map);
+    if (results.length) return results;
+  }
+  if (!(await canContinue())) return [];
+
   const enhanced = stretchContrast(source);
   if (enhanced && now() - started < budgetMs) {
     results = await attempt(enhanced, { tryDenoise: profile === 'precision' });
     if (results.length) return results;
+  }
+  if (!(await canContinue())) return [];
+  if (local) {
+    const binary = local.image(true);
+    if (!(await canContinue())) return [];
+    results = await attempt(binary, { binarizer: 'FixedThreshold' }, local.map);
+    if (results.length) return results.map((result) => ({ ...result, isInverted: !result.isInverted }));
   }
   if (profile !== 'precision' || !(await canContinue())) return [];
 

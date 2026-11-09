@@ -6,6 +6,7 @@ import {
   ZXING_WASM_VERSION,
 } from "zxing-wasm/reader";
 import readerWasmBase64 from "zxing-wasm/reader/zxing_reader.wasm";
+import { recoverDataMatrixPadding } from './datamatrix-compat.js';
 
 // esbuild embeds the actual decoder binary into the JavaScript bundle. The
 // application never has to fetch a .wasm file or contact a CDN at runtime.
@@ -97,11 +98,15 @@ export async function readCodes(image, {
     // passes. Returning more guesses is not an improvement in detection.
     minLineCount: 2,
     maxNumberOfSymbols: 32,
-    returnErrors: false,
+    // A few encoders emit an extra ASCII unlatch before the padding. Retain
+    // diagnostics only to run the independent, narrowly checked compatibility
+    // parser below; no checksum failure or arbitrary partial text is accepted.
+    returnErrors: mode === 'all' || mode === 'DataMatrix',
     textMode: "Plain",
   });
 
-  return results.filter((result) => result.isValid).map((result) => ({
+  return results.map((result) => result.isValid ? result : recoverDataMatrixPadding(result))
+    .filter(Boolean).map((result) => ({
     ...result,
     formatLabel: formatToLabel(result.format) || result.format,
   }));

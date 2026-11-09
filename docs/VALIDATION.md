@@ -1,10 +1,34 @@
-# Validation de ScanLibre 1.2.0
+# Validation de ScanLibre 1.2.1
 
-État de qualification du **7 novembre 2026**. La version 1.2.0 réorganise l’interface ; le moteur de lecture est inchangé. Les essais automatisés, les contrôles d’interface et les vérifications matérielles restant à réaliser sont distingués ci-dessous.
+État de qualification du **9 novembre 2026**. La version 1.2.1 corrige la lecture de Data Matrix pâles et un cas précis de terminaison non conforme. Les contrôles de la refonte d’interface 1.2.0 sont conservés plus bas avec leur date ; ils n’ont pas tous été répétés pour ce correctif.
+
+## Qualification 1.2.1 — 9 novembre 2026
+
+| Périmètre | Résultat | Portée |
+| --- | --- | --- |
+| Suite `npm test` | **49 tests réussis, 1 ignoré, aucun échec** | Les tests synthétiques et les suites précédentes passent. Le test facultatif sur photo via variable d’environnement est ignoré ; le cas réel est exercé séparément dans le pipeline complet. |
+| Petits Data Matrix pâles | **Récupération démontrée** | Scène synthétique de 960 × 720 px : gradient clair, grain déterministe, grand bord sombre et petit symbole à faible contraste. Lecture exacte normale, inclinée à 15°, inversée et inversée/inclinée ; la lecture simple échoue sur chaque variante. |
+| Géométrie et données d’entrée | **Vérifiées** | Contours replacés dans les coordonnées de l’image entière après sélection de la zone centrale, centre conservé après rotation, pixels fournis inchangés. |
+| Rejets du contraste local | **Vérifiés** | Fond avec grain et gradient sans symbole : aucun résultat. Les modes QR et codes-barres 1D ne retournent pas le Data Matrix. |
+| Compatibilité de terminaison | **6 tests réussis** | Terminateur ASCII redondant avant PAD accepté après vérification ECC indépendante ; remplissage incorrect, ECC irrécupérable, contenu contradictoire, autres erreurs et symboles invalides refusés. Les codes conformes restent dans le décodeur standard. |
+| Photo réelle signalée | **Lecture complète réussie en ligne de commande** | Photo entière de 1 080 × 1 440 px, sans recadrage ni transformation manuelle. Les modes Tous les formats et Data Matrix réussissent en Équilibré et Précision. Le contenu complet concorde avec la lecture indépendante de libdmtx ; la version précédente échouait sur cette image. |
+| Import de cette photo dans le HTML compilé | **Réussi sur PC et dans la vue mobile** | Chrome Linux : photo entière importée en Tous les formats / Équilibré sur PC (444 ms observés), puis Data Matrix / Équilibré dans un cadre de 390 × 844 px. Contenu exact, ouverture de Résultat après import mobile. Copie puis collage dans la recherche : texte intégral conservé. |
+| Budget Précision pour les codes 1D inclinés | **Préservé sur les cas testés** | Les fixtures Code 128, Code 39 et EAN-13 inclinées à 45° réussissent en Tous les formats / Précision avec le budget caméra par défaut de 700 ms : 138, 99 et 54 ms en ligne de commande. |
+| Réseau | **Aucun chargement pendant les lectures** | Le moteur principal et les modules JavaScript de vérification sont embarqués. Les essais automatisés interdisent `fetch` pendant l’initialisation et le décodage. |
+
+Le cas réel cumulait un faible contraste local et une terminaison Data Matrix rejetée par le moteur principal. La compatibilité est limitée à un octet ASCII d’unlatch `254` placé immédiatement avant PAD `129`, avec remplissage final valide. Les modules du symbole sont relus par une autre implémentation du parseur ECC200 et de Reed–Solomon. Après la seule normalisation de ce terminateur, le texte doit concorder intégralement avec le texte et les octets fournis par le premier moteur. Une erreur de checksum ou un autre défaut de format ne suffit jamais à produire un résultat accepté.
+
+L’image réelle, son contenu décodé et ses identifiants ne sont pas ajoutés au dépôt, aux exemples ou aux packs. Les régressions reproductibles utilisent uniquement des données fictives. Les essais sur photo ne constituent pas une mesure de débit d’une webcam ni une qualification matérielle sur téléphone.
+
+[Capture du contrôle navigateur avec un code fictif](screenshots/pale-example-1.2.1.png). L’exemple `examples/data-matrix-pale.png` est fourni pour reproduire une lecture à faible contraste, sans utiliser la photo réelle.
+
+## Historique 1.2.0 — 7 novembre 2026
+
+La version 1.2.0 réorganisait l’interface sans changer le moteur de lecture. Les résultats suivants décrivent les essais réalisés le **7 novembre 2026**, avant le correctif 1.2.1.
 
 Les contrôles d’interface ont porté sur le **fichier HTML compilé**, ouvert dans Chrome sous Linux via `localhost`. Les petits formats ont été exercés dans des cadres de navigateur aux dimensions indiquées : ils vérifient la présentation responsive, pas le comportement d’un téléphone physique ou de Safari.
 
-## Résultats automatisés
+### Résultats automatisés de 1.2.0
 
 | Périmètre | Résultat | Portée |
 | --- | --- | --- |
@@ -15,7 +39,7 @@ Les contrôles d’interface ont porté sur le **fichier HTML compilé**, ouvert
 | Bip | **2 tests audio simulés** | Niveau borné, zéro silencieux, absence de voix lorsque l’audio est bloqué et remplacement d’un bip précédent. |
 | Réseau du moteur | **Aucune requête** | Les tests interdisent `fetch` durant l’initialisation et les lectures. |
 
-## Contrôles de la nouvelle interface
+### Contrôles de l’interface 1.2.0
 
 | Périmètre | Résultat | Portée |
 | --- | --- | --- |
@@ -38,7 +62,7 @@ Les contrôles d’interface ont porté sur le **fichier HTML compilé**, ouvert
 
 La lecture caméra notifie un nouveau résultat sans changer d’écran. Sur mobile, un import réussi ouvre Résultat à la fin du lot seulement si Scanner est toujours affiché. Ces comportements sont séparés dans l’application ; les essais d’import ci-dessus ne valident pas une lecture sur webcam physique.
 
-## Limites de qualification
+### Limites de qualification de 1.2.0
 
 | Périmètre | État | Portée |
 | --- | --- | --- |
@@ -49,17 +73,21 @@ La lecture caméra notifie un nouveau résultat sans changer d’écran. Sur mob
 | Windows et ouverture directe `file://` | **Non testés** | QA sur navigateur Linux via `localhost`. La navigation directe vers un fichier est bloquée dans cet environnement de test. |
 | Lecteur d’écran | **Non testé** | Les vérifications statiques et de focus ne remplacent pas une qualification avec une technologie d’assistance. |
 
-Les images et identifiants réels ne sont présents ni dans les sources, ni dans les exemples, ni dans les packs. Les exemples versionnés sont fictifs. Aucun nouvel appel réseau ni dépendance externe n’a été ajouté pour cette refonte. Le gain de décodage observé sur des fixtures ne constitue pas une promesse de lecture de tous les codes ni une mesure de cadence sur webcam.
+Les exemples versionnés sont fictifs. Aucun nouvel appel réseau ni dépendance externe n’avait été ajouté pour la refonte 1.2.0. Le gain de décodage observé sur des fixtures ne constitue pas une promesse de lecture de tous les codes ni une mesure de cadence sur webcam. Les limites matérielles ci-dessus restent applicables à 1.2.1 ; le contrôle de la nouvelle photo est décrit séparément dans sa qualification.
 
-## Couverture automatisée
+## Couverture automatisée de 1.2.1
 
 ### Moteur et récupération
 
 `tests/decoder.test.mjs` vérifie l’initialisation partagée du moteur embarqué, les Data Matrix tournés et inversés, le filtrage des formats, les codes 1D, les caractères Unicode et de contrôle, les images vides, le test photo facultatif et l’absence de réseau.
 
-`tests/detection.test.mjs` compare la lecture simple et les profils supplémentaires sur des images synthétiques construites indépendamment du code de récupération. Il contrôle le faible contraste, les codes fins en diagonale, les coordonnées après rotation et recadrage, l’exclusion des codes extérieurs à la zone centrale, le filtrage des formats, l’annulation entre les passes, les limites d’image et la conservation des pixels d’entrée. Les trois profils s’arrêtent dès qu’une passe trouve des résultats.
+`tests/detection.test.mjs` compare la lecture simple et les profils supplémentaires sur des images synthétiques construites indépendamment du code de récupération. Il contrôle le faible contraste global, les Data Matrix pâles sur une scène à contraste global élevé, les deux polarités, les codes fins en diagonale, les coordonnées après rotation et recadrage, l’exclusion des codes extérieurs à la zone centrale, le filtrage des formats, l’annulation entre les passes, les limites d’image et la conservation des pixels d’entrée. Les trois profils s’arrêtent dès qu’une passe trouve des résultats.
 
-Le profil Équilibré effectue au maximum deux passes ; Précision au maximum quatre. La lecture 1D conserve une confirmation sur au moins deux lignes. Les buffers de rotation et d’agrandissement sont limités à 4 mégapixels ; les entrées du pipeline à 20 mégapixels. L’application réduit au préalable ses imports à 4 096 pixels sur le plus grand côté et ses captures selon le profil.
+`tests/datamatrix-compat.test.mjs` construit des symboles fictifs avec leurs blocs ECC et vérifie le cas précis de terminaison redondante. Les tests opposent ce cas aux remplissages invalides, aux erreurs de format différentes, aux ECC irrécupérables et aux candidats dont le texte ou les octets ne correspondent pas au symbole vérifié.
+
+Pour les modes de codes 2D et Tous les formats, Équilibré effectue au maximum quatre passes : original, contraste local sombre, contraste global, puis contraste local clair. Précision ajoute, selon le format, une recherche en diagonale et un seuil alternatif ou agrandissement, pour un maximum de six passes. Rapide reste à une seule passe ; désactiver la lecture renforcée conserve également la lecture simple. Le budget peut arrêter la recherche avant d’atteindre ces plafonds.
+
+La lecture 1D conserve son traitement de contraste global et une confirmation sur au moins deux lignes. Les images de travail du contraste local, de rotation et d’agrandissement sont limitées à 4 mégapixels ; les entrées du pipeline à 20 mégapixels. L’application réduit au préalable ses imports à 4 096 pixels sur le plus grand côté et ses captures selon le profil. Les coordonnées des images de travail réduites sont remappées vers l’image originale.
 
 Le budget de recherche est **souple** : il est contrôlé entre les appels synchrones du moteur. Un appel WASM déjà lancé ne peut pas être interrompu instantanément. Le pipeline rend la main entre les passes et n’émet pas de résultat lorsque la session a été annulée.
 
@@ -85,7 +113,7 @@ La réussite d’`applyConstraints()` ne suffit pas : le contrôleur vérifie le
 
 ## Reproduire
 
-Avec Node.js 20 ou supérieur :
+Avec Node.js 24 ou supérieur :
 
 ```sh
 npm ci
@@ -94,7 +122,7 @@ npm run build
 python scripts/package.py
 ```
 
-Le build produit `dist/ScanLibre.html`. Le moteur `zxing-wasm 3.1.6` et l’outil de compilation `esbuild 0.28.2` sont verrouillés dans `package-lock.json`. Python sert uniquement à créer les archives de distribution.
+Le build produit `dist/ScanLibre.html`. Le moteur `zxing-wasm 3.1.6`, les modules de vérification `@zxing/library 0.23.0` et l’outil de compilation `esbuild 0.28.2` sont verrouillés dans `package-lock.json`. Python sert uniquement à créer les archives de distribution.
 
 Pour le test photo, garder l’image hors du projet. Exemple PowerShell avec des valeurs fictives :
 
@@ -106,7 +134,7 @@ Remove-Item Env:\SCANLIBRE_TEST_IMAGE
 Remove-Item Env:\SCANLIBRE_TEST_EXPECTED
 ```
 
-Sans `SCANLIBRE_TEST_IMAGE`, le test est ignoré. Sans `SCANLIBRE_TEST_EXPECTED`, il vérifie seulement la présence d’un Data Matrix.
+Sans `SCANLIBRE_TEST_IMAGE`, le test est ignoré. Sans `SCANLIBRE_TEST_EXPECTED`, il vérifie seulement la présence d’un Data Matrix. Ce test utilise le décodeur simple sur le fichier ; il ne remplace pas un essai du pipeline RGBA complet ou de l’import HTML pour les images nécessitant le contraste local.
 
 ## Essais à réaliser sur les appareils cibles
 

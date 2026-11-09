@@ -33,6 +33,8 @@ si Scanner est toujours affiché. Afficher dans l'historique ouvre aussi un rés
 Lecture : les choix du format, du profil et de la zone sont dans Scanner.
 Essayer Précision et la zone centrale pour une petite étiquette à la caméra.
 Les images importées sont toujours analysées en entier.
+Les profils Équilibré et Précision renforcent aussi le contraste local des
+étiquettes pâles. Garder Lecture renforcée activée pour ces codes.
 
 Copie : contenu complet, numéro de série ou référence produit.
 Les champs nommés (S/N, P/N, serial, product...) et certaines paires structurées

@@ -2,7 +2,9 @@
 
 **Lecteur gratuit de Data Matrix, QR codes et codes-barres, toutes marques, avec webcam ou fichier image.**
 
-ScanLibre 1.2.0 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+ScanLibre 1.2.1 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+
+La version 1.2.1 améliore la lecture des Data Matrix pâles sur un fond irrégulier. Elle ajoute aussi une compatibilité ciblée pour un terminateur redondant rencontré sur certaines étiquettes, avec vérification indépendante de la correction d’erreurs et concordance exacte du contenu décodé.
 
 ## Démarrer
 
@@ -24,7 +26,7 @@ Le fichier doit être téléchargé et ouvert dans le navigateur. Un aperçu de 
 
 La distribution PROD contient la version prête à utiliser, sous forme de fichier HTML à ouvrir dans le navigateur. Le pack DEV contient les sources et les fichiers nécessaires à la reconstruction. Après une compilation depuis les sources, le résultat se trouve dans `dist/ScanLibre.html`. Les fichiers générés sont distribués dans les Releases et ne sont pas suivis dans Git.
 
-Deux images de démonstration entièrement fictives sont fournies dans `examples/` : un Data Matrix avec une paire d’identifiants fictifs et un QR contenant du texte.
+Trois images de démonstration entièrement fictives sont fournies dans `examples/` : un Data Matrix avec une paire d’identifiants fictifs, un QR contenant du texte et `data-matrix-pale.png`, un petit Data Matrix peu contrasté sur fond texturé.
 
 ## Navigation sur PC et mobile
 
@@ -36,7 +38,7 @@ Le bouton **Afficher** d’une entrée de l’historique et les lectures récent
 
 ![Interface PC de ScanLibre 1.2.0 avec des codes fictifs](docs/screenshots/desktop-1.2.0.png)
 
-[Capture du contrôle mobile à 390 × 844 px](docs/screenshots/mobile-qa-1.2.0.png) — aperçu du même fichier HTML dans un cadre responsive de Chrome, avec des données fictives.
+[Capture du contrôle mobile à 390 × 844 px](docs/screenshots/mobile-qa-1.2.0.png) — aperçu dans un cadre responsive de Chrome, avec des données fictives. Ces captures datent de la qualification de l’interface 1.2.0 du 7 novembre 2026.
 
 ## Lire une étiquette
 
@@ -66,10 +68,14 @@ Les commandes matérielles apparaissent après activation de la caméra : mise a
 | Profil | Comportement |
 | --- | --- |
 | **Rapide** | Une seule passe et un aperçu analysé jusqu’à 1 280 pixels sur le plus grand côté. |
-| **Équilibré** | Jusqu’à 1 920 pixels et une correction de contraste supplémentaire après un échec. |
+| **Équilibré** | Jusqu’à 1 920 pixels ; récupération du contraste local des codes 2D pâles, en clair comme en sombre, puis correction globale selon le besoin et le budget de recherche. |
 | **Précision** | Jusqu’à 2 560 pixels ; davantage de tentatives pour les petits codes ou codes inclinés, au prix d’une analyse plus lente. |
 
 **Lecture renforcée** autorise les tentatives supplémentaires. La **zone centrale** concentre la recherche dans le cadre indiqué, sans agrandir artificiellement l’aperçu ; le code doit y tenir en entier avec ses marges. Les fichiers importés sont toujours analysés sur l’image entière. Le profil Précision ne peut pas recréer des détails absents d’une image floue ou surexposée.
+
+Après une lecture simple infructueuse, la récupération locale compare le code à son voisinage pour limiter l’influence d’une grande zone sombre ou d’un reflet ailleurs dans l’image. Elle fonctionne dans **Équilibré** et **Précision** lorsque la lecture renforcée est active. Le traitement conserve les pixels d’origine et limite ses images de travail à 4 mégapixels ; les contours reconnus sont replacés dans l’aperçu original.
+
+La compatibilité Data Matrix ne concerne qu’un terminateur ASCII redondant juste avant le remplissage final. Elle exige une nouvelle extraction des modules, une validation Reed–Solomon indépendante, des octets de remplissage conformes et un texte exactement identique aux octets décodés. Les autres erreurs de format et les codes dont la correction d’erreurs échoue restent refusés.
 
 La métrique près de l’aperçu indique la définition analysée et la durée de la dernière analyse. La cadence de capture caméra et la cadence de décodage sont distinctes : ScanLibre attend la fin d’une analyse avant de commencer la suivante.
 
@@ -147,6 +153,7 @@ Le fichier téléchargé ne démarre aucun serveur et n’ouvre aucun port local
 | Symptôme | Vérification utile |
 | --- | --- |
 | Aucun code reconnu | Choisir **Tous les formats** ou **Data Matrix**, montrer tout le code, vérifier la netteté et les reflets. Essayer aussi une photo nette pour distinguer un problème d’image d’un problème de caméra. |
+| Data Matrix très pâle | Utiliser **Équilibré** ou **Précision** avec **Lecture renforcée** activée. La correction locale est automatique ; conserver le code entier et ses marges, puis ajuster l’angle si un reflet masque des modules. |
 | Demande caméra refusée | Vérifier l’autorisation caméra du site ou du fichier dans le navigateur et les autorisations du navigateur dans les réglages de l’appareil. Une règle d’entreprise peut empêcher cet accès. |
 | Webcam occupée | Fermer Caméra Windows, Teams ou l’application qui utilise déjà la webcam, puis réessayer. |
 | Caméra arrêtée après une navigation | Revenir dans Scanner et cliquer sur **Activer la webcam**. L’arrêt est prévu en arrière-plan, dans Historique et dans Résultat sur mobile. |
@@ -159,7 +166,7 @@ Le fichier téléchargé ne démarre aucun serveur et n’ouvre aucun port local
 
 ## Développer et reconstruire
 
-Prérequis : **Node.js 20 ou supérieur** et npm.
+Prérequis : **Node.js 24 ou supérieur** et npm.
 
 ```sh
 npm ci
@@ -167,7 +174,7 @@ npm test
 npm run build
 ```
 
-Pour régénérer les exemples et produire les archives PROD/DEV (Python 3 est nécessaire uniquement pour l’empaquetage) :
+Pour régénérer les deux exemples de base et produire les archives PROD/DEV (Python 3 est nécessaire uniquement pour l’empaquetage) :
 
 ```sh
 node scripts/generate-examples.mjs
@@ -184,19 +191,21 @@ Le build produit `dist/ScanLibre.html` et incorpore le moteur ainsi que les noti
 | `src/app.js` | Webcam, images, résultats, presse-papiers et historique. |
 | `src/ui.js` | Navigation responsive, écrans mobile, notifications et préférences d’animation/densité. |
 | `src/decoder.js`, `src/detection.js` | Moteur local, profils de lecture, contraste et zone centrale. |
+| `src/datamatrix-compat.js` | Vérification ECC200 et compatibilité strictement limitée au terminateur Data Matrix redondant. |
 | `src/camera.js` | Capacités caméra, application et vérification des réglages. |
 | `src/sound.js` | Volume et génération du bip de confirmation. |
 | `src/core.js` | Extraction de champs nommés, validation des liens et export CSV. |
 | `scripts/build.mjs` | Construction du fichier HTML autonome. |
 | `tests/` | Tests du moteur et des traitements des données. |
 
-Versions verrouillées dans `package-lock.json` : **zxing-wasm 3.1.6** et **esbuild 0.28.2**. Le moteur de lecture repose sur ZXing-C++.
+Versions verrouillées dans `package-lock.json` : **zxing-wasm 3.1.6**, **@zxing/library 0.23.0** et **esbuild 0.28.2**. Le moteur principal repose sur ZXing-C++. Des modules de la bibliothèque JavaScript sont embarqués pour la vérification ECC200 et la compatibilité ciblée ; ils ne nécessitent aucun chargement réseau lors d’une lecture.
 
 ## Licence et références
 
 Le code de ScanLibre est distribué sous [licence MIT](LICENSE). Les bibliothèques embarquées conservent leurs licences respectives, notamment MIT et Apache-2.0. Voir [`THIRD_PARTY_NOTICES.txt`](THIRD_PARTY_NOTICES.txt).
 
 - [ZXing WebAssembly : documentation du projet](https://github.com/Sec-ant/zxing-wasm)
+- [ZXing JavaScript : source et documentation](https://github.com/zxing-js/library)
 - [MDN : accès à la caméra avec `getUserMedia`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
 - [MDN : capacités réellement proposées par la caméra](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/getCapabilities)
 - [MDN : application des contraintes caméra](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/applyConstraints)
