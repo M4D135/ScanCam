@@ -47,7 +47,8 @@ Un texte long peut défiler à l'intérieur du champ sans déplacer l'écran.
 
 Dans Scanner, le bouton caméra devient Arrêter pendant la capture, ou Annuler
 pendant l'ouverture de la caméra et l'import d'images. Un code lu par caméra
-affiche une notification ouvrant le résultat, sans quitter Scanner.
+masque le cadre et affiche une petite coche verte pendant 650 ms, sans quitter
+Scanner ni déplacer son contenu. Le résultat reste accessible par son onglet.
 Après un import réussi, Résultat s'ouvre à la fin du lot sur mobile, uniquement
 si Scanner est toujours affiché. Afficher dans l'historique ouvre aussi un résultat.
 
@@ -60,8 +61,9 @@ proche du centre parmi ceux reconnus, puis s'arrête immédiatement.
 Dans Réglages > Déclenchement, choisir la durée maximale d'une tentative :
 1,5 seconde, 3 secondes par défaut ou 5 secondes. Sans résultat, ajuster
 la visée puis réessayer. Les appuis pendant la recherche ne s'empilent pas.
-Un nouvel appui peut relire le même article sans le retirer : son compteur
-augmente d'une lecture.
+Un nouvel appui réaffiche le cadre et peut relire le même article sans le
+retirer : son compteur augmente d'une lecture. Les anciens contours ne restent
+pas sur la vidéo. Avec les animations réduites, la coche reste statique et brève.
 
 Auto lance la lecture continue. Le choix Manuel / Auto est mémorisé.
 Un code restant devant la caméra en Auto ne compte pas à chaque image ;

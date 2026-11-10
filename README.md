@@ -2,7 +2,9 @@
 
 **Lecteur gratuit de Data Matrix, QR codes et codes-barres, toutes marques, avec webcam ou fichier image.**
 
-ScanCam 1.4.0 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+ScanCam 1.4.1 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+
+La version **1.4.1** dégage l’aperçu dès qu’un code est validé : le cadre de visée disparaît, une petite coche verte confirme la lecture pendant **650 ms**, puis s’efface. En manuel, le cadre revient au prochain appui sur **Scanner**. Le grand bandeau mobile « Code lu » est supprimé ; le résultat reste accessible par son onglet et son indicateur. Le retour visuel reste bref et statique lorsque les animations sont réduites.
 
 La version **1.4.0** démarre la caméra en **visée manuelle** : viser, puis appuyer sur **Scanner** pour lire un seul code dans le cadre central. Elle ajoute la lampe à portée de main, un déclencheur clavier configurable avec association et test, et une interface fixe sur PC comme sur mobile. Réglages se parcourt par catégories ; l’historique utilise des pages adaptées à la place disponible. Le mode **Auto** reste accessible et son choix est mémorisé.
 
@@ -40,7 +42,7 @@ La page hébergée nécessite une connexion Internet pour être chargée ; son a
 
 Le fichier doit être téléchargé et ouvert dans le navigateur. Un aperçu de fichier dans GitHub, une messagerie ou une autre application peut empêcher l’accès à la caméra.
 
-La distribution `ScanCam-1.4.0-PROD.zip` contient la version prête à utiliser, sous forme de fichier HTML à ouvrir dans le navigateur. Le pack `ScanCam-1.4.0-DEV.zip` contient les sources et les fichiers nécessaires à la reconstruction. Après une compilation depuis les sources, le résultat se trouve dans `dist/ScanCam.html`. Les fichiers générés sont distribués dans les Releases et ne sont pas suivis dans Git.
+La distribution `ScanCam-1.4.1-PROD.zip` contient la version prête à utiliser, sous forme de fichier HTML à ouvrir dans le navigateur. Le pack `ScanCam-1.4.1-DEV.zip` contient les sources et les fichiers nécessaires à la reconstruction. Après une compilation depuis les sources, le résultat se trouve dans `dist/ScanCam.html`. Les fichiers générés sont distribués dans les Releases et ne sont pas suivis dans Git.
 
 Trois images de démonstration entièrement fictives sont fournies dans `examples/` : un Data Matrix avec une paire d’identifiants fictifs, un QR contenant du texte et `data-matrix-pale.png`, un petit Data Matrix peu contrasté sur fond texturé.
 
@@ -52,9 +54,13 @@ L’application tient dans la fenêtre, **sans défilement global des pages**, s
 
 Sur mobile, la barre fixée en bas donne accès à quatre écrans : **Scanner**, **Résultat**, **Historique** et **Réglages**. Son fond englobe la zone de sécurité indiquée par le navigateur pour la barre d’accueil de l’appareil. La visée reste fixe sous les gestes du doigt. Dans **Résultat**, les vues **Contenu / Champs** séparent le texte brut des informations reconnues. Un texte long peut défiler à l’intérieur de son champ sans déplacer la page ; le zoom du navigateur reste possible.
 
-Une lecture caméra affiche une notification ouvrant le résultat, sans quitter le scanner automatiquement. Après un import d’images réussi, le résultat s’ouvre à la fin du lot uniquement si l’écran Scanner est toujours actif ; un autre écran consulté pendant l’import reste affiché.
+Une lecture caméra affiche brièvement une coche verte, sans quitter le scanner ni déplacer son contenu. Les contours de détection ne restent pas sur la vidéo. L’onglet **Résultat** permet de consulter le dernier code et un indicateur signale un nouveau résultat sur mobile. Après un import d’images réussi, le résultat s’ouvre à la fin du lot uniquement si l’écran Scanner est toujours actif ; un autre écran consulté pendant l’import reste affiché.
 
 Le bouton **Afficher** d’une entrée de l’historique et les lectures récentes ouvrent le résultat correspondant. Le retour à l’historique conserve la recherche et la page consultée, dans les limites du nombre d’entrées encore présentes.
+
+![Confirmation brève après une lecture caméra dans ScanCam 1.4.1](docs/screenshots/scancam-1.4.1.png)
+
+Aperçu du retour visuel dans un cadre de 390 × 844 px, avec une caméra simulée et un QR fictif.
 
 ![Écrans mobiles fixes de ScanCam 1.4.0](docs/screenshots/scancam-1.4.0.png)
 
@@ -89,7 +95,7 @@ Un Data Matrix utilise un format différent d’un QR code. Pour une étiquette 
 
 **Manuel est le mode initial.** L’aperçu sert à viser ; aucun décodage ne tourne tant que **Scanner** n’a pas été déclenché. À chaque appui, le lecteur recherche dans le cadre central et enregistre **un seul code**, le plus proche du centre parmi les codes reconnus. La recherche s’arrête dès cette lecture ou à la fin du délai choisi dans **Réglages → Déclenchement** : **1,5 seconde**, **3 secondes** par défaut, ou **5 secondes**. Si aucun code n’est lu, ajuster la visée puis réessayer. Les appuis reçus pendant une recherche ne s’empilent pas.
 
-Un nouvel appui peut relire le même article sans le sortir du cadre : son compteur augmente d’une lecture. Un contour signale le code retenu et son contenu apparaît dans **Résultat**. Le passage en **Auto** lance explicitement la lecture continue et mémorise ce choix. Dans ce mode, la zone choisie dans **Réglages → Lecture** s’applique ; un code restant devant la caméra ne compte pas à chaque image. Pour le relire automatiquement, le retirer quelques secondes puis le représenter. Le mode manuel utilise toujours son cadre central, quel que soit le réglage de zone du mode Auto.
+Un nouvel appui peut relire le même article sans le sortir du cadre : son compteur augmente d’une lecture. Une petite coche confirme le code retenu, puis l’aperçu reste dégagé jusqu’au prochain appui, qui réaffiche le cadre. Son contenu apparaît dans **Résultat**. Le passage en **Auto** lance explicitement la lecture continue et mémorise ce choix. Dans ce mode, la zone choisie dans **Réglages → Lecture** s’applique ; un code restant devant la caméra ne compte pas à chaque image et ne répète pas la confirmation visuelle. Pour le relire automatiquement, le retirer quelques secondes puis le représenter. Le cadre du mode Auto revient lorsque la vue ne contient plus de code détecté. Le mode manuel utilise toujours son cadre central, quel que soit le réglage de zone du mode Auto.
 
 Dans Scanner, **Annuler** remplace le bouton caméra pendant son ouverture ; **Arrêter** le remplace une fois la capture active. Pendant une recherche manuelle, **Échap** annule cette tentative et laisse l’aperçu actif ; hors recherche, il arrête la caméra. **Arrêter** libère toujours la webcam. Elle s’arrête également en ouvrant **Historique**, en ouvrant **Résultat** sur mobile ou lorsque l’onglet passe en arrière-plan ; au retour, cliquer de nouveau sur **Activer la webcam** (**Caméra** sur mobile). Elle reste active dans **Réglages** pour observer les ajustements, mais une tentative manuelle en cours est annulée en quittant Scanner. L’application ne demande pas d’accès au microphone.
 

@@ -46,9 +46,7 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
   const reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   const panels = [...document.querySelectorAll('[data-screen-panel]')];
   const readerPanels = [...document.querySelectorAll('[data-mobile-panel]')];
-  const notice = byId('mobileResultNotice');
-  const noticePreview = byId('mobileResultPreview');
-  const resultPanel = byId('resultPanel');
+  const scanConfirmation = byId('scanConfirmation');
   const previewStage = byId('previewStage');
   const scannerPreviewSlot = byId('scannerPreviewSlot');
   const cameraPreviewSlot = byId('cameraPreviewSlot');
@@ -70,7 +68,8 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
   let navigationRevision = 0;
   let navigationFrame = 0;
   let entryTimer = 0;
-  let resultTimer = 0;
+  let confirmationTimer = 0;
+  let confirmationAnimation = null;
   let activeSurface = null;
   let touchY = null;
 
@@ -139,12 +138,38 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
     } catch { /* Screen navigation remains usable when history writes are blocked. */ }
   }
 
-  function updateNotice() {
+  function updateResultIndicator() {
     root.dataset.hasResult = String(hasResult);
-    if (notice) notice.hidden = !(mobile && current === 'scanner' && hasResult && unreadResult);
     for (const item of document.querySelectorAll('[data-result-indicator]')) {
       item.hidden = !(hasResult && unreadResult);
     }
+  }
+
+  function clearScanConfirmation() {
+    clearTimeout(confirmationTimer);
+    confirmationTimer = 0;
+    confirmationAnimation?.cancel();
+    confirmationAnimation = null;
+    if (scanConfirmation) scanConfirmation.hidden = true;
+  }
+
+  function confirmScan() {
+    if (disposed) return false;
+    clearScanConfirmation();
+    if (!scanConfirmation || !previewStage || previewStage.closest('[hidden]')) return false;
+    scanConfirmation.hidden = false;
+    // Web Animations restarts cleanly on rapid reads without forcing a layout.
+    // A static check remains available when motion is reduced or unsupported.
+    if (root.dataset.motion === 'full' && typeof scanConfirmation.animate === 'function') {
+      confirmationAnimation = scanConfirmation.animate([
+        { opacity: 0, transform: 'translate(-50%, -50%) scale(.86)', offset: 0 },
+        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)', offset: .2 },
+        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)', offset: .75 },
+        { opacity: 0, transform: 'translate(-50%, -50%) scale(.96)', offset: 1 },
+      ], { duration: 650, easing: 'cubic-bezier(.2, .75, .25, 1)', fill: 'both' });
+    }
+    confirmationTimer = setTimeout(clearScanConfirmation, 650);
+    return true;
   }
 
   function applyMotion(value = 'auto') {
@@ -154,10 +179,9 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
       ? 'reduced' : 'full';
     if (root.dataset.motion === 'reduced') {
       clearTimeout(entryTimer);
-      clearTimeout(resultTimer);
-      for (const element of [...panels, ...readerPanels, notice, resultPanel].filter(Boolean)) {
-        element.classList.remove('screen-enter', 'is-result-new');
-      }
+      confirmationAnimation?.cancel();
+      confirmationAnimation = null;
+      for (const element of [...panels, ...readerPanels]) element.classList.remove('screen-enter');
     }
     return motionPreference;
   }
@@ -170,6 +194,7 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
 
   function paint({ reason, previous, focus = false, restore = false }) {
     if (disposed) return;
+    if (reason === 'navigation' || reason === 'history' || reason === 'settings-page') clearScanConfirmation();
     const revision = ++navigationRevision;
     cancelAnimationFrame(navigationFrame);
     const focusedBefore = document.activeElement;
@@ -209,7 +234,7 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
     document.title = `ScanCam — ${title}`;
 
     if (current === 'result' || (!mobile && group === 'reader')) unreadResult = false;
-    updateNotice();
+    updateResultIndicator();
 
     if (oldSurface !== activeSurface) {
       clearTimeout(entryTimer);
@@ -289,31 +314,16 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
     if (disposed || !record || typeof record.text !== 'string') return;
     hasResult = true;
     paintResultPage('raw');
-    const text = record.text.replace(/\s+/g, ' ').trim();
-    const characters = Array.from(text);
-    const preview = characters.length > 90 ? `${characters.slice(0, 89).join('')}…` : text;
-    if (noticePreview) noticePreview.textContent = preview || 'Code sans texte';
-    if (notice) notice.setAttribute('aria-label', `Voir le résultat : ${preview || 'code sans texte'}`);
     if (announce) unreadResult = !(current === 'result' || (!mobile && groupFor(current) === 'reader'));
-    updateNotice();
-    if (announce && root.dataset.motion === 'full') {
-      clearTimeout(resultTimer);
-      for (const element of [resultPanel, notice].filter(Boolean)) element.classList.add('is-result-new');
-      resultTimer = setTimeout(() => {
-        for (const element of [resultPanel, notice].filter(Boolean)) element.classList.remove('is-result-new');
-      }, 720);
-    }
+    updateResultIndicator();
   }
 
   function clearResult() {
     hasResult = false;
     unreadResult = false;
     paintResultPage('raw');
-    clearTimeout(resultTimer);
-    for (const element of [resultPanel, notice].filter(Boolean)) element.classList.remove('is-result-new');
-    if (noticePreview) noticePreview.textContent = '';
-    if (notice) notice.removeAttribute('aria-label');
-    updateNotice();
+    clearScanConfirmation();
+    updateResultIndicator();
   }
 
   function syncHistory({ total = 0, unique = 0 } = {}) {
@@ -327,6 +337,9 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
 
   function setActivity({ running = false, starting = false, importing = false } = {}) {
     const activity = importing ? 'importing' : starting ? 'starting' : running ? 'running' : 'idle';
+    const previousActivity = root.dataset.activity;
+    if (activity !== previousActivity && (activity === 'starting' || activity === 'importing' ||
+      (previousActivity === 'running' && activity === 'idle'))) clearScanConfirmation();
     root.dataset.activity = activity;
     const label = byId('activityLabel');
     if (label) label.textContent = {
@@ -408,6 +421,8 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
   }
   listen(window, 'popstate', restoreRoute);
   listen(window, 'hashchange', restoreRoute);
+  listen(window, 'pagehide', clearScanConfirmation);
+  listen(document, 'visibilitychange', () => { if (document.hidden) clearScanConfirmation(); });
   listenMedia(mobileQuery, () => {
     rememberPosition();
     mobile = mobileQuery.matches;
@@ -426,16 +441,18 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
   paint({ reason: 'init', previous: null });
 
   return {
-    navigate, navigateSettings, notifyResult, clearResult, syncHistory, setActivity, applyMotion, applyDensity,
+    navigate, navigateSettings, notifyResult, clearResult, confirmScan, clearScanConfirmation,
+    syncHistory, setActivity, applyMotion, applyDensity,
     get screen() { return current; },
     get settingsPage() { return settingsPage; },
     get isMobile() { return mobile; },
+    get isScanConfirming() { return Boolean(scanConfirmation && !scanConfirmation.hidden); },
     destroy() {
       disposed = true;
       navigationRevision += 1;
       cancelAnimationFrame(navigationFrame);
       clearTimeout(entryTimer);
-      clearTimeout(resultTimer);
+      clearScanConfirmation();
       for (const remove of removers) remove();
       try { window.history.scrollRestoration = originalScrollRestoration; } catch { /* Optional. */ }
     },

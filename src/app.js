@@ -46,7 +46,7 @@ const state = {
   selectedHistory: new Set(), pendingDeleteBatch: null,
   storageWarned: false,
   cameraController: null, cameraApplying: false, scanAbort: null, imageAbort: null,
-  detectionRevision: 0, scanCycle: 0, manualNotice: '', customShortcut: null,
+  detectionRevision: 0, scanCycle: 0, scanValidated: false, manualNotice: '', customShortcut: null,
   shortcutSession: null, shortcutTimer: 0, shortcutSelection: 'space', pressedKeys: new Set(),
   historyPage: 0, historyPageSize: 1, historyFitFrame: 0, cameraControlPage: 0,
 };
@@ -689,14 +689,14 @@ function renderHistory() {
 }
 
 function acceptResult(result, source = 'image') {
-  if (typeof result.text !== 'string') return;
+  if (typeof result.text !== 'string') return false;
   const format = result.symbology || result.format || 'Inconnu';
   const key = `${format}\0${result.text}`;
   const now = Date.now();
   if (source === 'camera') {
     const lastSeen = state.seen.get(key);
     state.seen.set(key, now);
-    if (lastSeen !== undefined && (state.visibleCodes.has(key) || now - lastSeen < 1800)) return;
+    if (lastSeen !== undefined && (state.visibleCodes.has(key) || now - lastSeen < 1800)) return false;
     if (state.seen.size > 1000) {
       for (const [oldKey, seenAt] of state.seen) if (now - seenAt > 60000) state.seen.delete(oldKey);
     }
@@ -713,6 +713,14 @@ function acceptResult(result, source = 'image') {
   persistHistory();
   beep();
   if (ui.autoCopy.checked) void copyText(selectedCopyText(record), true);
+  return true;
+}
+
+function confirmCameraScan() {
+  state.scanValidated = true;
+  ui.overlayCanvas.hidden = true;
+  workspace.confirmScan();
+  updateScanGuide();
 }
 
 function drawBoxes(results, width, height) {
@@ -742,7 +750,8 @@ function updateScanGuide() {
   const width = ui.video.videoWidth;
   const height = ui.video.videoHeight;
   const manual = ui.scanMode.value !== 'auto';
-  ui.scanGuide.hidden = !state.running || (!manual && ui.scanRegion.value !== 'center') || !width || !height;
+  ui.scanGuide.hidden = !state.running || state.scanValidated || workspace?.isScanConfirming ||
+    (!manual && ui.scanRegion.value !== 'center') || !width || !height;
   ui.scanGuideLabel.textContent = manual ? 'Code à viser' : 'Zone de recherche';
   if (ui.scanGuide.hidden) return;
   // The camera may expose more pixels than the analysis budget (e.g. 8K).
@@ -791,6 +800,8 @@ function cancelCameraReading() {
 
 function beginCameraReading() {
   cancelCameraReading();
+  state.scanValidated = false;
+  workspace?.clearScanConfirmation();
   state.manualNotice = '';
   ui.overlayCanvas.hidden = true;
   if (!state.running) { setControls(); return; }
@@ -836,8 +847,11 @@ function captureManualFrame() {
 function manualStateChanged(event) {
   if (state.running && ui.scanMode.value !== 'auto' && isScannerSurface()) {
     if (event.status === 'scanning') {
+      state.scanValidated = false;
+      workspace.clearScanConfirmation();
       state.manualNotice = '';
       ui.overlayCanvas.hidden = true;
+      updateScanGuide();
       status('Lecture en cours…', 'scanning');
     } else if (event.status === 'success') {
       state.manualNotice = 'Code lu. Prêt pour le prochain appui.';
@@ -1083,6 +1097,8 @@ function releaseCamera(update = true) {
   state.cameraToken += 1;
   state.running = false;
   state.starting = false;
+  state.scanValidated = false;
+  workspace?.clearScanConfirmation();
   state.manualNotice = '';
   cancelCameraReading();
   state.cameraController?.destroy();
@@ -1227,9 +1243,15 @@ async function scanFrame(token, cycle) {
       });
       if (!current()) return;
       if (revision === state.detectionRevision) {
-        drawBoxes(results, frameCanvas.width, frameCanvas.height);
+        ui.overlayCanvas.hidden = true;
         ui.scanMetrics.textContent = `${frameCanvas.width} × ${frameCanvas.height} · analyse ${Math.round(performance.now() - started)} ms`;
-        results.forEach((result) => acceptResult(result, 'camera'));
+        let accepted = false;
+        for (const result of results) accepted = acceptResult(result, 'camera') || accepted;
+        if (accepted) confirmCameraScan();
+        // In automatic mode a new empty view rearms the guide. A code still in
+        // view must neither redraw its old outline nor repeat the confirmation.
+        else if (!results.length) state.scanValidated = false;
+        updateScanGuide();
         state.visibleCodes = new Set(results.map((result) => `${result.symbology || result.format || 'Inconnu'}\0${result.text}`));
         status(results.length ? `${results.length} code${results.length > 1 ? 's' : ''} détecté${results.length > 1 ? 's' : ''}` : 'Recherche d’un code…', results.length ? 'success' : 'scanning');
       }
@@ -1589,8 +1611,7 @@ async function boot() {
     accept: (result, frame) => {
       if (!state.running || frame.cameraToken !== state.cameraToken || frame.revision !== state.detectionRevision ||
           ui.scanMode.value === 'auto' || !isScannerSurface() || document.hidden) return;
-      drawBoxes([result], frame.width, frame.height);
-      acceptResult(result, 'manual');
+      if (acceptResult(result, 'manual')) confirmCameraScan();
     },
     onState: manualStateChanged,
   });

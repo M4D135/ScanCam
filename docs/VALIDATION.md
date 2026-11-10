@@ -1,6 +1,23 @@
-# Validation de ScanCam 1.4.0
+# Validation de ScanCam 1.4.1
 
-État de qualification du **10 novembre 2026**. La version 1.4.0 ajoute le déclenchement manuel, la commande de lampe lorsque le navigateur la propose et une interface organisée en écrans fixes. Les qualifications antérieures ci-dessous restent attachées à leur version et à leur date.
+État de qualification du **10 novembre 2026**. La version 1.4.1 remplace les cadres et le bandeau persistants après une lecture caméra par une confirmation visuelle brève. Les qualifications antérieures ci-dessous restent attachées à leur version et à leur date.
+
+## Qualification 1.4.1 — 10 novembre 2026
+
+Contrôles ciblés dans **Chrome Linux**, avec le HTML compilé et la caméra synthétique de `tests/browser-camera-harness.mjs`, dans un écran de **390 × 844 px**. Aucun essai de webcam ou de téléphone physique n’est revendiqué pour ce correctif.
+
+| Périmètre | Résultat | Portée |
+| --- | --- | --- |
+| Lecture validée | **Contrôlée** | Le QR fictif est enregistré, le viseur et le calque des contours sont masqués, la coche apparaît puis disparaît. Le grand bandeau mobile n’existe plus. |
+| Visée suivante | **Contrôlée** | Après la confirmation, le viseur reste masqué et Scanner reste utilisable. Le prochain appui réaffiche le cadre avant la recherche ; une tentative sur une vue sans code ne produit aucune confirmation. |
+| Relecture | **Contrôlée** | Le même QR, lu sur deux appuis distincts, porte le compteur à deux ; chaque lecture acceptée produit son propre retour visuel. |
+| Mode Auto | **Contrôlé** | Une nouvelle lecture produit la coche ; le code maintenu devant la caméra n’augmente plus le compteur et ne répète pas l’effet. Aucun ancien rectangle n’est redessiné sur la vidéo. |
+| Animations réduites et arrêt | **Contrôlés** | En préférence Réduites, une coche statique est affichée. Arrêter pendant sa présence la masque immédiatement avec le viseur et le calque de détection. |
+| Agencement mobile | **Stable** | Avant et pendant confirmation : aperçu de 358 × 517 px, à x = 16 / y = 144. Hauteur du document et de la fenêtre identiques, 844 px ; aucune nouvelle zone défilante. |
+| Tests automatisés | **81 réussis, 1 ignoré, aucun échec** | 82 tests au total ; le test facultatif d’une photo locale n’a pas reçu de photo. |
+| Compilation | **Réussie** | HTML autonome, SHA-256 `219af6fa38fd3eb3632547fb14381688f80ea9063204636c51925a800b902bab`. |
+
+[Capture du retour visuel 1.4.1](screenshots/scancam-1.4.1.png), avec un QR fictif et le banc de test identifié dans la page. La relecture statique des cycles de navigation, d’arrêt et de restauration n’a trouvé aucun bloqueur. Les contours des images fixes importées restent disponibles pour repérer les codes dans l’image.
 
 ## Qualification 1.4.0 — 10 novembre 2026
 
