@@ -9,14 +9,14 @@ ROOT = Path(__file__).resolve().parent.parent
 VERSION = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
 OUTPUT = ROOT / "artifacts"
 OUTPUT.mkdir(exist_ok=True)
-READER = ROOT / "dist" / "ScanLibre.html"
+READER = ROOT / "dist" / "ScanCam.html"
 if not READER.is_file():
     raise SystemExit("Run npm ci, npm test and npm run build before packaging.")
 
-GUIDE = f"""SCANLIBRE {VERSION} — GUIDE D'UTILISATION
+GUIDE = f"""SCANCAM {VERSION} — GUIDE D'UTILISATION
 
 1. Extraire entièrement ce ZIP dans un dossier de votre PC.
-2. Clic droit sur ScanLibre.html > Ouvrir avec > Microsoft Edge ou Google Chrome.
+2. Clic droit sur ScanCam.html > Ouvrir avec > Microsoft Edge ou Google Chrome.
 3. Cliquer sur Activer la webcam et autoriser la caméra, ou Ouvrir une image.
    Sur mobile, ces boutons s'appellent Caméra et Image.
 4. Si nécessaire, ouvrir Réglages > Lecture pour choisir le format :
@@ -62,6 +62,9 @@ Son : dans Réglages, ajuster Volume du bip entre 0 et 100 %, puis Tester le son
 Affichage : thèmes clair/sombre, taille 100 à 200 %, densité Confortable/Compacte.
 Animations : Suivre l'appareil, Expressives ou Réduites. Les préférences sont
 mémorisées dans ce navigateur ; la densité compacte concerne surtout le PC.
+Le renommage en ScanCam conserve les clés de stockage existantes : les réglages
+et l’historique enregistré restent accessibles à la même adresse, dans le même
+profil de navigateur.
 
 Ctrl+O : ouvrir une image. Ctrl+V : coller une capture. Échap : arrêter.
 L'historique reste en mémoire pendant la session. Dans Réglages, Conserver
@@ -89,7 +92,7 @@ Pour cette alternative, utiliser le compte ChatGPT associé au projet si demand�
 Une connexion est nécessaire pour charger cette page. Le fichier HTML du pack
 fonctionne sans compte et hors ligne ; la mise en cache du site n'est pas garantie.
 
-Source : https://github.com/M4D135/ScanLibre
+Source : https://github.com/M4D135/ScanCam
 Licence du projet : MIT. Licences du moteur : THIRD_PARTY_NOTICES.txt.
 """
 
@@ -98,24 +101,24 @@ def files_in(relative):
     return sorted(path for path in (ROOT / relative).rglob("*") if path.is_file())
 
 
-prod = OUTPUT / f"ScanLibre-{VERSION}-PROD.zip"
+prod = OUTPUT / f"ScanCam-{VERSION}-PROD.zip"
 with ZipFile(prod, "w", ZIP_DEFLATED, compresslevel=9) as archive:
-    archive.write(READER, "ScanLibre/ScanLibre.html")
-    archive.writestr("ScanLibre/LIRE-MOI.txt", GUIDE)
+    archive.write(READER, "ScanCam/ScanCam.html")
+    archive.writestr("ScanCam/LIRE-MOI.txt", GUIDE)
     for name in ("LICENSE", "THIRD_PARTY_NOTICES.txt"):
-        archive.write(ROOT / name, f"ScanLibre/{name}")
+        archive.write(ROOT / name, f"ScanCam/{name}")
     for folder in ("examples", "licenses"):
         for path in files_in(folder):
-            archive.write(path, f"ScanLibre/{path.relative_to(ROOT).as_posix()}")
+            archive.write(path, f"ScanCam/{path.relative_to(ROOT).as_posix()}")
 
-dev = OUTPUT / f"ScanLibre-{VERSION}-DEV.zip"
+dev = OUTPUT / f"ScanCam-{VERSION}-DEV.zip"
 with ZipFile(dev, "w", ZIP_DEFLATED, compresslevel=9) as archive:
     for name in ("README.md", "LICENSE", "THIRD_PARTY_NOTICES.txt", "package.json", "package-lock.json", ".gitignore"):
-        archive.write(ROOT / name, f"ScanLibre-DEV/{name}")
+        archive.write(ROOT / name, f"ScanCam-DEV/{name}")
     for folder in ("src", "scripts", "tests", "docs", "licenses", "examples", "deploy", ".github"):
         for path in files_in(folder):
-            archive.write(path, f"ScanLibre-DEV/{path.relative_to(ROOT).as_posix()}")
-    archive.write(READER, "ScanLibre-DEV/dist/ScanLibre.html")
+            archive.write(path, f"ScanCam-DEV/{path.relative_to(ROOT).as_posix()}")
+    archive.write(READER, "ScanCam-DEV/dist/ScanCam.html")
 
 checksums = OUTPUT / "SHA256SUMS.txt"
 checksums.write_text("".join(

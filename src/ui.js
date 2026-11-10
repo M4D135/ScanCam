@@ -181,7 +181,7 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
     const copy = SCREEN_COPY[activeNav];
     if (byId('pageTitle')) byId('pageTitle').textContent = copy.title;
     if (byId('pageSubtitle')) byId('pageSubtitle').textContent = copy.subtitle;
-    document.title = `ScanLibre — ${copy.title}`;
+    document.title = `ScanCam — ${copy.title}`;
 
     if (current === 'result' || (!mobile && group === 'reader')) unreadResult = false;
     updateNotice();

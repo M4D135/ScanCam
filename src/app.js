@@ -6,6 +6,7 @@ import { normalizeVolume, playScanBeep } from './sound.js';
 import { createWorkspaceUI } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
+// Keep the original storage namespace so the rename retains existing user data.
 const HISTORY_KEY = 'scanlibre.history.v1';
 const PREFS_KEY = 'scanlibre.preferences.v1';
 const HISTORY_LIMIT = 500;
@@ -138,7 +139,7 @@ function persistHistory() {
     if (!storageSet(HISTORY_KEY, JSON.stringify(state.records))) {
       ui.keepHistory.checked = false;
       if (!storageSet(HISTORY_KEY, null)) {
-        message('Le navigateur ne permet ni de conserver ni d’effacer l’ancienne copie de l’historique. Ferme ScanLibre et efface les données de ce fichier dans le navigateur si tu souhaites la supprimer.', 'warning');
+        message('Le navigateur ne permet ni de conserver ni d’effacer l’ancienne copie de l’historique. Ferme ScanCam et efface les données de ce fichier dans le navigateur si tu souhaites la supprimer.', 'warning');
       }
       savePreferences();
     }
@@ -655,7 +656,7 @@ async function startCamera() {
   prepareSound();
   releaseCamera(false);
   if (!navigator.mediaDevices?.getUserMedia) {
-    message('L’accès caméra est indisponible dans cette fenêtre. Ouvre ScanLibre directement dans ton navigateur, depuis son lien HTTPS ou le fichier HTML téléchargé. L’import d’image reste disponible.', 'warning');
+    message('L’accès caméra est indisponible dans cette fenêtre. Ouvre ScanCam directement dans ton navigateur, depuis son lien HTTPS ou le fichier HTML téléchargé. L’import d’image reste disponible.', 'warning');
     return;
   }
   state.starting = true;
@@ -832,7 +833,7 @@ function exportHistory() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `ScanLibre-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = `ScanCam-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.append(link);
   link.click();
   link.remove();
@@ -1045,7 +1046,7 @@ async function boot() {
   } catch {
     ui.engineStatus.textContent = 'Lecteur indisponible';
     status('Erreur de chargement', 'error');
-    message('Le moteur de lecture n’a pas pu démarrer. Recharge ScanLibre dans une version récente de ton navigateur. Pour le fichier téléchargé, vérifie que ScanLibre.html est complet.', 'error');
+    message('Le moteur de lecture n’a pas pu démarrer. Recharge ScanCam dans une version récente de ton navigateur. Pour le fichier téléchargé, vérifie que ScanCam.html est complet.', 'error');
   }
 }
 

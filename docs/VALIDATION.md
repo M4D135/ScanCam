@@ -1,8 +1,27 @@
-# Validation de ScanLibre 1.2.3
+# Validation de ScanCam 1.2.4
 
-État de qualification du **9 novembre 2026**. La version 1.2.3 épure Scanner et regroupe ses paramètres dans Réglages → Lecture. Elle ne modifie pas le moteur de lecture. Les qualifications précédentes sont conservées plus bas avec leur version et leur date.
+État de qualification du **10 novembre 2026**. La version 1.2.4 renomme ScanLibre en ScanCam. Les qualifications des versions précédentes restent consignées plus bas avec leur nom, leur version et leur date ; elles ne constituent pas de nouveaux essais de 1.2.4.
 
-## Qualification 1.2.3 — 9 novembre 2026
+## Qualification 1.2.4 — 10 novembre 2026
+
+| Périmètre | État | Portée |
+| --- | --- | --- |
+| Documentation et distribution | **Textes et chemins actualisés** | Nom ScanCam, fichier `dist/ScanCam.html`, archives `ScanCam-1.2.4-PROD.zip` / `ScanCam-1.2.4-DEV.zip` et dépôt `M4D135/ScanCam`. L’URL du site de test privé reste inchangée. |
+| Continuité du stockage | **Compatibilité documentée** | Les clés `scanlibre.history.v1` et `scanlibre.preferences.v1` sont conservées pour retrouver les données à la même adresse, dans le même profil de navigateur. Le renommage n’impose pas une remise à zéro des données. |
+| Compatibilité d’hébergement | **Points de raccordement identifiés** | Le workflow copie `dist/ScanCam.html` vers `index.html`. Le domaine, la branche `site`, `/srv/scan`, les unités `scan-update` et le marqueur du bloc Caddy existant gardent leur identité. |
+| Compilation | **Réussie** | `npm run build` produit le HTML autonome `dist/ScanCam.html`, avec moteur et notices embarqués. |
+| Tests automatisés | **49 réussis, 1 ignoré, aucun échec** | Suite existante relancée en 1.2.4 ; le test facultatif sur photo locale reste ignoré. |
+| Titres et navigation | **Contrôlés dans Chrome Linux** | Scanner, Historique et Réglages affichent le nom ScanCam et la version 1.2.4 ; les titres de navigateur suivent les écrans. |
+| Exemples fictifs | **Régénérés et vérifiés** | Le générateur vérifie le décodage exact avant d’écrire chaque fichier. Le QR de démonstration contient désormais « ScanCam — exemple de lecture ». |
+| Script VPS | **Syntaxe et compatibilité relues** | `bash -n` réussit ; ancien marqueur Caddy conservé, dépôt cible renommé. Aucun script n’a été exécuté sur le VPS pendant cette qualification. |
+
+[Capture de ScanCam 1.2.4](screenshots/scancam-1.2.4.png).
+
+Le renommage ne modifie ni les traitements de détection ni le signal audio. Aucun nouvel essai matériel, Safari ou téléphone physique n’est annoncé pour cette version.
+
+## Historique de qualification ScanLibre 1.2.3 — 9 novembre 2026
+
+La version 1.2.3 épurait Scanner et regroupait ses paramètres dans Réglages → Lecture, sans modifier le moteur de lecture.
 
 Les contrôles portent sur le **HTML compilé**, ouvert dans Chrome sous Linux dans des cadres responsive.
 
@@ -25,7 +44,7 @@ Les contrôles portent sur le **HTML compilé**, ouvert dans Chrome sous Linux d
 
 **Limites :** aucun essai avec une webcam physique, Safari ou un téléphone physique pour ce correctif. L’état Arrêter pendant une capture réelle, les marges de sécurité matérielles et les changements de hauteur propres à Safari restent à vérifier sur appareil. Les tests d’import et la revue du code ne constituent pas une qualification matérielle.
 
-## Historique de qualification 1.2.2 — 9 novembre 2026
+## Historique de qualification ScanLibre 1.2.2 — 9 novembre 2026
 
 Les contrôles portent sur le **HTML compilé**, ouvert dans Chrome sous Linux dans des cadres responsive. Le défilement reste celui du document, avec la restauration de position propre à chaque écran.
 
@@ -47,7 +66,7 @@ Le site principal est [scan.estrasse.fr](https://scan.estrasse.fr). Le [site de 
 
 **Limites :** aucun essai sur Safari ou sur un iPhone/Android physique pour ce correctif. La zone de sécurité matérielle, la barre d’accueil, les changements de hauteur liés aux commandes de Safari et le clavier virtuel restent à vérifier sur l’appareil. Le seuil mobile reste de 900 px ; au-delà, y compris sur un téléphone en paysage large, la disposition PC s’applique.
 
-## Historique de qualification 1.2.1 — 9 novembre 2026
+## Historique de qualification ScanLibre 1.2.1 — 9 novembre 2026
 
 La version 1.2.1 corrigeait la lecture de Data Matrix pâles et un cas précis de terminaison non conforme. Les résultats ci-dessous ont été obtenus lors de sa qualification, avant la modification de navigation 1.2.2.
 
@@ -69,7 +88,7 @@ L’image réelle, son contenu décodé et ses identifiants ne sont pas ajoutés
 
 [Capture du contrôle navigateur avec un code fictif](screenshots/pale-example-1.2.1.png). L’exemple `examples/data-matrix-pale.png` est fourni pour reproduire une lecture à faible contraste, sans utiliser la photo réelle.
 
-## Historique 1.2.0 — 7 novembre 2026
+## Historique ScanLibre 1.2.0 — 7 novembre 2026
 
 La version 1.2.0 réorganisait l’interface sans changer le moteur de lecture. Les résultats suivants décrivent les essais réalisés le **7 novembre 2026**, avant le correctif 1.2.1.
 
@@ -169,9 +188,9 @@ npm run build
 python scripts/package.py
 ```
 
-Le build produit `dist/ScanLibre.html`. Le moteur `zxing-wasm 3.1.6`, les modules de vérification `@zxing/library 0.23.0` et l’outil de compilation `esbuild 0.28.2` sont verrouillés dans `package-lock.json`. Python sert uniquement à créer les archives de distribution.
+Le build courant produit `dist/ScanCam.html`. Le moteur `zxing-wasm 3.1.6`, les modules de vérification `@zxing/library 0.23.0` et l’outil de compilation `esbuild 0.28.2` sont verrouillés dans `package-lock.json`. Python sert uniquement à créer les archives de distribution.
 
-Pour le test photo, garder l’image hors du projet. Exemple PowerShell avec des valeurs fictives :
+Pour le test photo, garder l’image hors du projet. Les noms de variables `SCANLIBRE_TEST_IMAGE` et `SCANLIBRE_TEST_EXPECTED` restent utilisables par compatibilité. Exemple PowerShell avec des valeurs fictives :
 
 ```powershell
 $env:SCANLIBRE_TEST_IMAGE = 'C:\TestsLocaux\etiquette.png'
@@ -187,9 +206,9 @@ Sans `SCANLIBRE_TEST_IMAGE`, le test est ignoré. Sans `SCANLIBRE_TEST_EXPECTED`
 
 | Essai | Résultat attendu |
 | --- | --- |
-| Ouvrir le fichier téléchargé avec Edge ou Chrome | État Prêt · hors ligne ; import fonctionnel sans connexion. |
+| Ouvrir le fichier téléchargé avec Edge ou Chrome | Nom ScanCam, commandes Caméra / Image disponibles après chargement et import fonctionnel sans connexion. |
 | Ouvrir [scan.estrasse.fr](https://scan.estrasse.fr) sur un téléphone ou une tablette | Quatre écrans accessibles ; vérifier les autorisations dans le navigateur réel. Le site de test privé reste disponible en alternative avec connexion si demandée. |
-| Faire défiler Scanner et Réglages sur mobile | Barre ancrée au bord inférieur de la zone web, sans capsule flottante ; dernières commandes accessibles et aucun raccourci Réglages caméra redondant à côté de Zone. |
+| Faire défiler Scanner et Réglages sur mobile | Barre ancrée au bord inférieur de la zone web ; dernières commandes accessibles. Les menus Format, Profil et Zone sont regroupés dans Réglages → Lecture. |
 | Tourner l’appareil, ouvrir le clavier et afficher/masquer les commandes de Safari | Navigation accessible dans la zone visible, marges de sécurité adaptées à l’appareil et champs utilisables ; confirmer ce comportement sur le navigateur réel. |
 | Activer une webcam | Aperçu, définition et cadence réelles affichés ; aucune demande de microphone. |
 | Ouvrir Réglages pendant la lecture | Le même aperçu vidéo reste actif et visible ; seules les capacités annoncées sont proposées, une valeur inconnue est désactivée. |

@@ -1,7 +1,7 @@
 name: Publication scan.estrasse.fr
 
 # À chaque push sur main : tests puis compilation.
-# dist/ScanLibre.html est publié en index.html sur la branche orpheline « site ».
+# dist/ScanCam.html est publié en index.html sur la branche orpheline « site ».
 # Le VPS récupère cette branche (deploy/install-vps.sh).
 
 on:
@@ -34,9 +34,9 @@ jobs:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          test -s dist/ScanLibre.html
+          test -s dist/ScanCam.html
           mkdir -p public
-          cp dist/ScanLibre.html public/index.html
+          cp dist/ScanCam.html public/index.html
           cd public
           git init -q -b site
           git config user.name 'github-actions[bot]'

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# ScanLibre : mise en ligne sur un VPS servi par Caddy (service systemd « caddy »).
+# ScanCam : mise en ligne sur un VPS servi par Caddy (service systemd « caddy »).
 #
-#   curl -fsSL https://raw.githubusercontent.com/M4D135/ScanLibre/main/deploy/install-vps.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/M4D135/ScanCam/main/deploy/install-vps.sh | sudo bash
 #
 # Relançable sans risque. Le script :
-#   1. installe ScanLibre compilé (branche « site » du dépôt) dans /srv/scan ;
+#   1. installe ScanCam compilé (branche « site » du dépôt) dans /srv/scan ;
 #   2. ajoute le bloc scan.estrasse.fr au Caddyfile et recharge Caddy, qui obtient
 #      seul le certificat Let's Encrypt. Si Caddy refuse la configuration, l'ancien
 #      Caddyfile est restauré et les autres sites ne sont pas touchés ;
@@ -14,11 +14,12 @@
 set -euo pipefail
 
 DOMAIN=scan.estrasse.fr
-REPO=M4D135/ScanLibre
+REPO=M4D135/ScanCam
 BRANCH=site
 ROOT=/srv/scan
 UNIT=scan-update
 UPDATER=/usr/local/sbin/$UNIT
+# Legacy marker preserved so existing Caddy blocks remain recognised.
 MARK_BEGIN="# >>> $DOMAIN : ScanLibre (deploy/install-vps.sh)"
 MARK_END="# <<< $DOMAIN"
 
@@ -112,7 +113,7 @@ chmod 755 "$UPDATER"
 
 cat > "/etc/systemd/system/$UNIT.service" <<EOF
 [Unit]
-Description=Mise à jour de ScanLibre ($DOMAIN) depuis GitHub
+Description=Mise à jour de ScanCam ($DOMAIN) depuis GitHub
 Wants=network-online.target
 After=network-online.target
 
@@ -129,7 +130,7 @@ EOF
 
 cat > "/etc/systemd/system/$UNIT.timer" <<EOF
 [Unit]
-Description=Vérifie toutes les 5 minutes si ScanLibre a une nouvelle version
+Description=Vérifie toutes les 5 minutes si ScanCam a une nouvelle version
 
 [Timer]
 OnCalendar=*:0/5
@@ -140,7 +141,7 @@ WantedBy=timers.target
 EOF
 systemctl daemon-reload
 
-say "récupération de ScanLibre compilé ($REPO, branche $BRANCH)"
+say "récupération de ScanCam compilé ($REPO, branche $BRANCH)"
 install -d -m 755 "$ROOT"
 systemctl start "$UNIT.service" || { journalctl -u "$UNIT" -n 20 --no-pager >&2 || true; die "échec du téléchargement."; }
 [ -s "$ROOT/current/index.html" ] || die "aucun index.html dans $ROOT/current."

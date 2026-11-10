@@ -1,5 +1,5 @@
 /**
- * Small, browser-independent helpers shared by ScanLibre's UI and exports.
+ * Small, browser-independent helpers shared by ScanCam's UI and exports.
  * Scanned contents are data: none of these functions evaluates them.
  */
 

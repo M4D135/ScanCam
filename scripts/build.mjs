@@ -33,7 +33,7 @@ const result = await build({
   minify: true,
   legalComments: "inline",
   charset: "utf8",
-  define: { __SCANLIBRE_VERSION__: JSON.stringify(pkg.version) },
+  define: { __SCANCAM_VERSION__: JSON.stringify(pkg.version) },
   logLevel: "warning",
 });
 
@@ -53,9 +53,9 @@ if (/<(?:script|link)\b[^>]*(?:src|href)\s*=\s*["']\s*https?:/i.test(html)) {
 }
 
 const outDir = join(root, "dist");
-const outPath = join(outDir, "ScanLibre.html");
+const outPath = join(outDir, "ScanCam.html");
 await mkdir(outDir, { recursive: true });
 await writeFile(outPath, html, "utf8");
 const sha = createHash("sha256").update(html, "utf8").digest("hex");
-console.log(`ScanLibre ${pkg.version} : dist/ScanLibre.html (${Buffer.byteLength(html)} octets)`);
+console.log(`ScanCam ${pkg.version} : dist/ScanCam.html (${Buffer.byteLength(html)} octets)`);
 console.log(`SHA-256 : ${sha}`);

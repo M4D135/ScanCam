@@ -1,7 +1,7 @@
-ScanLibre 1.2.3 — Notices des composants tiers
+ScanCam 1.2.4 — Notices des composants tiers
 =============================================
 
-Le fichier autonome ScanLibre.html contient le moteur de lecture et ces notices.
+Le fichier autonome ScanCam.html contient le moteur de lecture et ces notices.
 Les composants sont redistribués avec leurs licences respectives. Aucune
 modification n'a été apportée aux binaires WebAssembly fournis par zxing-wasm.
 

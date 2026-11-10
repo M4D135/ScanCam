@@ -28,7 +28,7 @@ const examples = [
   {
     file: "qr-demo.png",
     format: "QRCode",
-    text: "ScanLibre — essai gratuit et hors ligne",
+    text: "ScanCam — exemple de lecture",
     options: "",
   },
 ];

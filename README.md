@@ -1,8 +1,10 @@
-# ScanLibre
+# ScanCam
 
 **Lecteur gratuit de Data Matrix, QR codes et codes-barres, toutes marques, avec webcam ou fichier image.**
 
-ScanLibre 1.2.3 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+ScanCam 1.2.4 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+
+La version **1.2.4** renomme ScanLibre en **ScanCam**, dans l’application, le fichier HTML et les packs. Les clés de stockage existantes sont conservées : les réglages et l’historique enregistré restent accessibles sur la même adresse, dans le même profil de navigateur.
 
 La version 1.2.3 simplifie Scanner autour de l’aperçu et des actions **Caméra / Image**. **Format**, **Profil de lecture**, **Zone de recherche** et **Lecture renforcée** sont réunis dans **Réglages → Lecture**. Le bouton caméra laisse place à **Arrêter** pendant la capture ou à **Annuler** pendant le démarrage et l’import. Les informations de la caméra et de la dernière analyse se trouvent dans **Réglages → Caméra**.
 
@@ -14,7 +16,7 @@ Le moteur conserve les améliorations de la version 1.2.1 : récupération des D
 
 ### Version en ligne
 
-[Ouvrir ScanLibre sur scan.estrasse.fr](https://scan.estrasse.fr) dans un navigateur complet, puis autoriser la caméra ou ouvrir une image. C’est l’adresse principale du lecteur en ligne ; aucun téléchargement n’est nécessaire pour l’essayer.
+[Ouvrir ScanCam sur scan.estrasse.fr](https://scan.estrasse.fr) dans un navigateur complet, puis autoriser la caméra ou ouvrir une image. C’est l’adresse principale du lecteur en ligne ; aucun téléchargement n’est nécessaire pour l’essayer.
 
 Le [site de test privé](https://scanlibre-test-m4d135.garden-lake-2660.chatgpt.site) reste disponible en alternative. Il demande le compte ChatGPT associé au projet si la session n’est pas déjà ouverte.
 
@@ -22,15 +24,15 @@ La page hébergée nécessite une connexion Internet pour être chargée ; son a
 
 ### Fichier HTML autonome
 
-1. Récupérer le **pack PROD** dans les [Releases du projet](https://github.com/M4D135/ScanLibre/releases).
+1. Récupérer le **pack PROD** dans les [Releases du projet](https://github.com/M4D135/ScanCam/releases).
 2. Extraire l’archive dans un dossier local.
-3. Ouvrir **`ScanLibre.html` dans Microsoft Edge ou Google Chrome**. Si le double-clic utilise une autre application, choisir **Ouvrir avec**.
+3. Ouvrir **`ScanCam.html` dans Microsoft Edge ou Google Chrome**. Si le double-clic utilise une autre application, choisir **Ouvrir avec**.
 4. Une fois le lecteur chargé, cliquer sur **Activer la webcam** ou **Ouvrir une image** (**Caméra / Image** sur mobile).
 5. Pour ajuster la détection, ouvrir **Réglages → Lecture**.
 
 Le fichier doit être téléchargé et ouvert dans le navigateur. Un aperçu de fichier dans GitHub, une messagerie ou une autre application peut empêcher l’accès à la caméra.
 
-La distribution PROD contient la version prête à utiliser, sous forme de fichier HTML à ouvrir dans le navigateur. Le pack DEV contient les sources et les fichiers nécessaires à la reconstruction. Après une compilation depuis les sources, le résultat se trouve dans `dist/ScanLibre.html`. Les fichiers générés sont distribués dans les Releases et ne sont pas suivis dans Git.
+La distribution `ScanCam-1.2.4-PROD.zip` contient la version prête à utiliser, sous forme de fichier HTML à ouvrir dans le navigateur. Le pack `ScanCam-1.2.4-DEV.zip` contient les sources et les fichiers nécessaires à la reconstruction. Après une compilation depuis les sources, le résultat se trouve dans `dist/ScanCam.html`. Les fichiers générés sont distribués dans les Releases et ne sont pas suivis dans Git.
 
 Trois images de démonstration entièrement fictives sont fournies dans `examples/` : un Data Matrix avec une paire d’identifiants fictifs, un QR contenant du texte et `data-matrix-pale.png`, un petit Data Matrix peu contrasté sur fond texturé.
 
@@ -46,11 +48,13 @@ Une lecture caméra affiche une notification ouvrant le résultat, sans quitter 
 
 Le bouton **Afficher** d’une entrée de l’historique et les lectures récentes ouvrent le résultat correspondant. Le retour à l’historique conserve la recherche et la position dans la liste.
 
-![Interface PC de ScanLibre 1.2.0 avec des codes fictifs](docs/screenshots/desktop-1.2.0.png)
+![Interface de ScanCam 1.2.4](docs/screenshots/scancam-1.2.4.png)
 
-[Capture du Scanner épuré 1.2.3](docs/screenshots/scanner-1.2.3.png) — aperçu mobile actuel.
+[Ancienne interface PC de ScanLibre 1.2.0](docs/screenshots/desktop-1.2.0.png)
 
-[Capture de la navigation mobile 1.2.2](docs/screenshots/mobile-nav-1.2.2.png) — aperçu dans un cadre responsive de Chrome. La capture PC ci-dessus et [l’ancienne capture mobile](docs/screenshots/mobile-qa-1.2.0.png) datent de la qualification de l’interface 1.2.0 du 7 novembre 2026. Les contrôles responsive ne remplacent pas une qualification sur Safari et sur un téléphone physique.
+[Capture du Scanner épuré 1.2.3](docs/screenshots/scanner-1.2.3.png) — aperçu mobile sous le nom ScanLibre, avant le renommage 1.2.4.
+
+[Capture de la navigation mobile 1.2.2](docs/screenshots/mobile-nav-1.2.2.png) — aperçu dans un cadre responsive de Chrome. L’ancienne capture PC 1.2.0 et [l’ancienne capture mobile](docs/screenshots/mobile-qa-1.2.0.png) datent de la qualification de l’interface 1.2.0 du 7 novembre 2026. Les contrôles responsive ne remplacent pas une qualification sur Safari et sur un téléphone physique.
 
 ## Lire une étiquette
 
@@ -91,7 +95,7 @@ Après une lecture simple infructueuse, la récupération locale compare le code
 
 La compatibilité Data Matrix ne concerne qu’un terminateur ASCII redondant juste avant le remplissage final. Elle exige une nouvelle extraction des modules, une validation Reed–Solomon indépendante, des octets de remplissage conformes et un texte exactement identique aux octets décodés. Les autres erreurs de format et les codes dont la correction d’erreurs échoue restent refusés.
 
-Dans **Réglages → Caméra**, **Dernière analyse** indique la définition analysée et la durée de la dernière analyse, y compris après un import d’image. La cadence de capture caméra et la cadence de décodage sont distinctes : ScanLibre attend la fin d’une analyse avant de commencer la suivante.
+Dans **Réglages → Caméra**, **Dernière analyse** indique la définition analysée et la durée de la dernière analyse, y compris après un import d’image. La cadence de capture caméra et la cadence de décodage sont distinctes : ScanCam attend la fin d’une analyse avant de commencer la suivante.
 
 ### Volume du bip et affichage
 
@@ -197,7 +201,7 @@ python scripts/package.py
 
 Les archives et leurs sommes SHA-256 se trouvent dans `artifacts/`.
 
-Le build produit `dist/ScanLibre.html` et incorpore le moteur ainsi que les notices de licence. Modifier les fichiers de `src/`, puis reconstruire ; le fichier généré n’est pas la source à éditer.
+Le build produit `dist/ScanCam.html` et incorpore le moteur ainsi que les notices de licence. Modifier les fichiers de `src/`, puis reconstruire ; le fichier généré n’est pas la source à éditer.
 
 | Élément | Rôle |
 | --- | --- |
@@ -216,7 +220,7 @@ Versions verrouillées dans `package-lock.json` : **zxing-wasm 3.1.6**, **@zxing
 
 ## Licence et références
 
-Le code de ScanLibre est distribué sous [licence MIT](LICENSE). Les bibliothèques embarquées conservent leurs licences respectives, notamment MIT et Apache-2.0. Voir [`THIRD_PARTY_NOTICES.txt`](THIRD_PARTY_NOTICES.txt).
+Le code de ScanCam est distribué sous [licence MIT](LICENSE). Les bibliothèques embarquées conservent leurs licences respectives, notamment MIT et Apache-2.0. Voir [`THIRD_PARTY_NOTICES.txt`](THIRD_PARTY_NOTICES.txt).
 
 - [ZXing WebAssembly : documentation du projet](https://github.com/Sec-ant/zxing-wasm)
 - [ZXing JavaScript : source et documentation](https://github.com/zxing-js/library)
