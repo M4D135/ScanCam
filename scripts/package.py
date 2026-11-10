@@ -27,6 +27,7 @@ de Node.js ou serveur local n'est nécessaire pour utiliser ce fichier HTML.
 
 Navigation sur PC : Scanner affiche l'aperçu et le résultat côte à côte, les
 trois dernières lectures et les compteurs. Historique et Réglages ont leur écran.
+Le nom et la version figurent uniquement en haut de la colonne latérale sur PC.
 Le panneau de lecture contient l'aperçu et les actions Caméra / Image
 (Activer la webcam / Ouvrir une image sur PC).
 Sur mobile : la barre ancrée au bas de l’écran ouvre Scanner, Résultat,

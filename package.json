@@ -1,6 +1,6 @@
 {
   "name": "scancam",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Lecteur local de Data Matrix, QR codes et codes-barres, sans installation.",
   "private": true,
   "type": "module",

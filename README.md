@@ -2,7 +2,9 @@
 
 **Lecteur gratuit de Data Matrix, QR codes et codes-barres, toutes marques, avec webcam ou fichier image.**
 
-ScanCam 1.2.4 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+ScanCam 1.2.5 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+
+La version **1.2.5** retire les mentions répétées du nom et du numéro de version : ils figurent une seule fois, en haut de la colonne latérale sur PC. Les pieds de page sont supprimés. Les panneaux de Réglages s’alignent en hauteur, avec un aperçu caméra adaptable, et les titres suivent les mêmes marges que les panneaux sur grand écran.
 
 La version **1.2.4** renomme ScanLibre en **ScanCam**, dans l’application, le fichier HTML et les packs. Les clés de stockage existantes sont conservées : les réglages et l’historique enregistré restent accessibles sur la même adresse, dans le même profil de navigateur.
 
@@ -32,7 +34,7 @@ La page hébergée nécessite une connexion Internet pour être chargée ; son a
 
 Le fichier doit être téléchargé et ouvert dans le navigateur. Un aperçu de fichier dans GitHub, une messagerie ou une autre application peut empêcher l’accès à la caméra.
 
-La distribution `ScanCam-1.2.4-PROD.zip` contient la version prête à utiliser, sous forme de fichier HTML à ouvrir dans le navigateur. Le pack `ScanCam-1.2.4-DEV.zip` contient les sources et les fichiers nécessaires à la reconstruction. Après une compilation depuis les sources, le résultat se trouve dans `dist/ScanCam.html`. Les fichiers générés sont distribués dans les Releases et ne sont pas suivis dans Git.
+La distribution `ScanCam-1.2.5-PROD.zip` contient la version prête à utiliser, sous forme de fichier HTML à ouvrir dans le navigateur. Le pack `ScanCam-1.2.5-DEV.zip` contient les sources et les fichiers nécessaires à la reconstruction. Après une compilation depuis les sources, le résultat se trouve dans `dist/ScanCam.html`. Les fichiers générés sont distribués dans les Releases et ne sont pas suivis dans Git.
 
 Trois images de démonstration entièrement fictives sont fournies dans `examples/` : un Data Matrix avec une paire d’identifiants fictifs, un QR contenant du texte et `data-matrix-pale.png`, un petit Data Matrix peu contrasté sur fond texturé.
 
@@ -48,7 +50,9 @@ Une lecture caméra affiche une notification ouvrant le résultat, sans quitter 
 
 Le bouton **Afficher** d’une entrée de l’historique et les lectures récentes ouvrent le résultat correspondant. Le retour à l’historique conserve la recherche et la position dans la liste.
 
-![Interface de ScanCam 1.2.4](docs/screenshots/scancam-1.2.4.png)
+![Panneaux de Réglages alignés dans ScanCam 1.2.5](docs/screenshots/scancam-1.2.5.png)
+
+[Interface avant simplification 1.2.4](docs/screenshots/scancam-1.2.4.png)
 
 [Ancienne interface PC de ScanLibre 1.2.0](docs/screenshots/desktop-1.2.0.png)
 

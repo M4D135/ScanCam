@@ -1,8 +1,26 @@
-# Validation de ScanCam 1.2.4
+# Validation de ScanCam 1.2.5
 
-État de qualification du **10 novembre 2026**. La version 1.2.4 renomme ScanLibre en ScanCam. Les qualifications des versions précédentes restent consignées plus bas avec leur nom, leur version et leur date ; elles ne constituent pas de nouveaux essais de 1.2.4.
+État de qualification du **10 novembre 2026**. La version 1.2.5 supprime les mentions répétées de marque/version et aligne les panneaux. Les qualifications antérieures ci-dessous restent attachées à leur version et à leur date.
 
-## Qualification 1.2.4 — 10 novembre 2026
+## Qualification 1.2.5 — 10 novembre 2026
+
+| Périmètre | Résultat | Portée |
+| --- | --- | --- |
+| Nom et version | **Un seul emplacement sur PC** | La marque et `VERSION 1.2.5` restent en haut de la colonne. Suppression du doublon en bas de colonne et des deux pieds de page. Le titre mobile remplace la marque de la colonne masquée. |
+| Réglages sur PC | **Bords supérieurs et inférieurs identiques** | Géométries mesurées dans Chrome Linux : caméra et pile de droite alignées, commandes matérielles ouvertes ou repliées, densité confortable et compacte. L’aperçu absorbe la hauteur disponible. |
+| Grille intermédiaire | **Panneaux Son / Copie alignés** | À 1024 px et taille d’affichage 125 %, les deux cartes côte à côte ont les mêmes coordonnées haut/bas ; aucun débordement horizontal. |
+| Grand écran | **Bandeau et panneaux alignés** | Cadre de 1920 px : les bords gauche/droit du titre et des actions suivent ceux de la carte Lecture. Les colonnes de Réglages ont le même bas. |
+| Scanner et Historique sur PC | **Contrôlés** | Aperçu et Résultat ont les mêmes coordonnées haut/bas. Historique n’affiche ni marque ni version dans son contenu. |
+| Mobile | **Contrôlé dans des cadres responsive** | Cadres de 320 et 390 px : Scanner occupe la hauteur disponible, sans débordement horizontal ; la navigation est fixe au bord inférieur. À 320 px, les cartes de Réglages partagent les mêmes marges. |
+| Structure HTML | **Aucune référence cassée** | Aucun identifiant en double, aucune cible manquante pour les labels et attributs ARIA ; une seule occurrence du numéro de version dans le HTML source. |
+| Tests automatisés | **49 réussis, 1 ignoré, aucun échec** | Suite existante relancée ; test facultatif sur photo locale ignoré. |
+| Compilation | **Réussie** | HTML autonome `dist/ScanCam.html`, SHA-256 `f758a825e3788ae61a1c7c0072d0d6fb2305052adeb9be7924d720700663ce52`. |
+
+[Capture de Réglages 1.2.5](screenshots/scancam-1.2.5.png), après défilement pour montrer les deux colonnes complètes et leur bord inférieur commun.
+
+La correction concerne la présentation. Aucun nouvel essai sur webcam physique, Safari ou téléphone physique n’est annoncé. Les tests responsive ont été réalisés dans Chrome Linux sur le HTML compilé.
+
+## Historique de qualification ScanCam 1.2.4 — 10 novembre 2026
 
 | Périmètre | État | Portée |
 | --- | --- | --- |
