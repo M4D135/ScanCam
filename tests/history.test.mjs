@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  historyKey, reconcileHistorySelection, selectVisibleHistory, partitionHistorySelection,
+  historyKey, reconcileHistorySelection, selectVisibleHistory, partitionHistorySelection, paginateHistory,
 } from '../src/history.js';
 
 // Synthetic entries only. Freezing also catches unintended record mutations.
@@ -91,4 +91,52 @@ test('empty or entirely stale selections remove nothing, and selecting all remov
   }
   assert.deepEqual(partitionHistorySelection(records, new Set(records.map(key))), { kept: [], removed: [...records] });
   assert.deepEqual(partitionHistorySelection([], new Set([key(first)])), { kept: [], removed: [] });
+});
+
+test('pagination clamps the current page after deletions remove its former rows', () => {
+  const lastPage = paginateHistory(records, 2, 1);
+  assert.deepEqual(lastPage, { rows: [third], page: 2, pageCount: 3, start: 2, end: 3, total: 3 });
+  const remaining = partitionHistorySelection(records, new Set([key(second), key(third)])).kept;
+  assert.deepEqual(paginateHistory(remaining, lastPage.page, 1),
+    { rows: [first], page: 0, pageCount: 1, start: 0, end: 1, total: 1 });
+  assert.deepEqual(paginateHistory(records, 900, 2),
+    { rows: [third], page: 1, pageCount: 2, start: 2, end: 3, total: 3 });
+});
+
+test('an empty filtered history remains on the first of one page', () => {
+  const empty = Object.freeze(records.filter((record) => record.text === 'NO-MATCH'));
+  assert.deepEqual(paginateHistory(empty, 25, 10),
+    { rows: [], page: 0, pageCount: 1, start: 0, end: 0, total: 0 });
+  assert.notStrictEqual(paginateHistory(empty, 0, 10).rows, empty);
+});
+
+test('pagination keeps row identity, metadata and input order without mutating the list', () => {
+  const before = JSON.stringify(records);
+  const page = paginateHistory(records, 0, 2);
+  assert.deepEqual(page.rows, [first, second]);
+  assert.strictEqual(page.rows[0], first);
+  assert.strictEqual(page.rows[1], second);
+  assert.equal(page.rows[1].count, 7);
+  assert.equal(page.rows[0].timestamp, first.timestamp);
+  page.rows.pop();
+  assert.equal(records.length, 3);
+  assert.equal(JSON.stringify(records), before);
+  assert.deepEqual(paginateHistory(records, 1, 2).rows, [third]);
+});
+
+test('pagination normalizes numeric controls and bounds invalid page and size inputs', () => {
+  assert.equal(paginateHistory(records, -10, 1).page, 0);
+  assert.equal(paginateHistory(records, '1.8', '1.9').page, 1);
+  assert.deepEqual(paginateHistory(records, '1.8', '1.9').rows, [second]);
+  for (const invalid of [undefined, null, NaN, Infinity, -Infinity, 'invalid', {}, [], Symbol('page')]) {
+    assert.equal(paginateHistory(records, invalid, 1).page, 0);
+    assert.equal(paginateHistory(records, 0, invalid).rows.length, 1);
+  }
+  assert.equal(paginateHistory(records, 0, 0).rows.length, 1);
+  assert.equal(paginateHistory(records, 0, -100).rows.length, 1);
+  const many = Object.freeze(Array.from({ length: 501 }, (_, index) => Object.freeze({ index })));
+  assert.deepEqual(paginateHistory(many, 0, 900).rows, many.slice(0, 500));
+  assert.deepEqual(paginateHistory(many, 1, 900).rows, [many[500]]);
+  assert.deepEqual(paginateHistory(null, 8, 10),
+    { rows: [], page: 0, pageCount: 1, start: 0, end: 0, total: 0 });
 });

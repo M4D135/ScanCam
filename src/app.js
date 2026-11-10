@@ -4,7 +4,9 @@ import { buildVideoConstraints, createCameraController } from './camera.js';
 import { parseLabelFields, safeHttpUrl, formatLabel, toCsv } from './core.js';
 import { normalizeVolume, playScanBeep } from './sound.js';
 import { createWorkspaceUI } from './ui.js';
-import { historyKey, reconcileHistorySelection, selectVisibleHistory, partitionHistorySelection } from './history.js';
+import { historyKey, reconcileHistorySelection, selectVisibleHistory, partitionHistorySelection, paginateHistory } from './history.js';
+import { createManualScanner } from './manual-scan.js';
+import { normalizeScanShortcut, shortcutFromEvent, presetScanShortcut, matchesScanShortcut } from './scan-shortcuts.js';
 
 const $ = (id) => document.getElementById(id);
 // Keep the original storage namespace so the rename retains existing user data.
@@ -30,6 +32,11 @@ const ui = Object.fromEntries([
   'historySelection', 'selectAllHistory', 'selectAllHistoryLabel', 'selectionSummary',
   'clearSelection', 'copySelection', 'deleteSelection', 'deleteSelectionConfirm',
   'deleteSelectionTitle', 'deleteSelectionHint', 'cancelDeleteSelection', 'confirmDeleteSelection', 'historyTimezone',
+  'scanMode', 'scanModeManual', 'scanModeAuto', 'manualScan', 'manualScanLabel', 'scannerHint',
+  'torchToggle', 'torchLabel', 'scanGuideLabel', 'manualTimeout', 'scanShortcut',
+  'shortcutLearn', 'shortcutTest', 'shortcutCancel', 'shortcutStatus',
+  'historyPagePrevious', 'historyPageNext', 'historyPageStatus',
+  'cameraControlPrev', 'cameraControlNext', 'cameraControlPage',
 ].map((id) => [id, $(id)]));
 
 const state = {
@@ -39,12 +46,16 @@ const state = {
   selectedHistory: new Set(), pendingDeleteBatch: null,
   storageWarned: false,
   cameraController: null, cameraApplying: false, scanAbort: null, imageAbort: null,
-  detectionRevision: 0,
+  detectionRevision: 0, scanCycle: 0, manualNotice: '', customShortcut: null,
+  shortcutSession: null, shortcutTimer: 0, shortcutSelection: 'space', pressedKeys: new Set(),
+  historyPage: 0, historyPageSize: 1, historyFitFrame: 0, cameraControlPage: 0,
 };
 const frameCanvas = document.createElement('canvas');
 const frameContext = frameCanvas.getContext('2d', { willReadFrequently: true });
 let clipboardQueue = Promise.resolve();
 let workspace;
+let manualScanner;
+let decoderQueue = Promise.resolve();
 const historyCheckboxKeys = new WeakMap();
 const historyDateFormat = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const historyClockFormat = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
@@ -94,12 +105,31 @@ function setControls() {
   ui.detectionProfile.disabled = state.importing;
   ui.tryHarder.disabled = state.importing;
   ui.scanRegion.disabled = state.importing;
+  const manual = ui.scanMode.value !== 'auto';
+  const reading = Boolean(manualScanner?.isBusy);
+  document.documentElement.dataset.scanMode = manual ? 'manual' : 'auto';
+  document.documentElement.dataset.scanState = state.running ? (manual && !reading ? 'aiming' : 'scanning') : 'idle';
+  ui.scanModeManual.setAttribute('aria-pressed', String(manual));
+  ui.scanModeAuto.setAttribute('aria-pressed', String(!manual));
+  ui.scanMode.disabled = ui.scanModeManual.disabled = ui.scanModeAuto.disabled = state.starting || state.importing;
+  ui.manualScan.hidden = !state.running || !manual;
+  ui.manualScan.disabled = !state.running || !manual || reading || state.cameraApplying || ui.video.readyState < 2;
+  ui.manualScan.setAttribute('aria-busy', String(reading));
+  ui.manualScanLabel.textContent = reading ? 'Analyse…' : 'Scanner';
+  ui.manualTimeout.disabled = reading;
+  ui.scannerHint.textContent = state.importing ? 'Analyse des images…'
+    : state.starting ? 'Ouverture de la caméra…'
+      : !state.running ? (manual ? 'Active la caméra, puis vise un code.' : 'Active la caméra pour la lecture automatique.')
+        : !manual ? 'Lecture automatique tant que la caméra est active.'
+          : reading ? 'Recherche d’un code dans le cadre…'
+            : state.manualNotice || 'Un appui lit un seul code dans le cadre.';
+  renderTorchButton();
   for (const button of document.querySelectorAll('[data-action]')) {
     const control = { 'start-camera': ui.startCamera, 'stop-camera': ui.stopCamera, 'import-image': ui.importImage }[button.dataset.action];
     if (control) button.disabled = control.disabled;
   }
   workspace?.setActivity({ running: state.running, starting: state.starting, importing: state.importing });
-  const nextFocus = focused === ui.startCamera && active ? ui.stopCamera
+  const nextFocus = focused === ui.startCamera && active ? (state.running && manual ? ui.manualScan : ui.stopCamera)
     : focused === ui.stopCamera && !active ? ui.startCamera : null;
   if (nextFocus && !nextFocus.disabled && nextFocus.getClientRects().length) nextFocus.focus({ preventScroll: true });
 }
@@ -139,6 +169,10 @@ function savePreferences() {
     uiScale: ui.uiScale.value,
     motion: ui.motionPreference.value,
     density: ui.densityPreference.value,
+    scanMode: ui.scanMode.value,
+    manualTimeout: Number(ui.manualTimeout.value),
+    scanShortcut: ui.scanShortcut.value,
+    customShortcut: state.customShortcut,
   }));
 }
 
@@ -176,6 +210,11 @@ function loadPreferences() {
     if (['100', '125', '150', '200'].includes(String(prefs.uiScale))) ui.uiScale.value = String(prefs.uiScale);
     if (['auto', 'full', 'reduced'].includes(prefs.motion)) ui.motionPreference.value = prefs.motion;
     if (['comfortable', 'compact'].includes(prefs.density)) ui.densityPreference.value = prefs.density;
+    ui.scanMode.value = prefs.scanMode === 'auto' ? 'auto' : 'manual';
+    if ([1500, 3000, 5000].includes(Number(prefs.manualTimeout))) ui.manualTimeout.value = String(prefs.manualTimeout);
+    state.customShortcut = normalizeScanShortcut(prefs.customShortcut);
+    if (['none', 'space', 'enter', 'custom'].includes(prefs.scanShortcut)) ui.scanShortcut.value = prefs.scanShortcut;
+    if (ui.scanShortcut.value === 'custom' && !state.customShortcut) ui.scanShortcut.value = 'none';
     if (ui.keepHistory.checked) {
       const records = JSON.parse(storageGet(HISTORY_KEY) || '[]');
       if (Array.isArray(records)) {
@@ -376,6 +415,40 @@ function filteredHistory() {
     `${record.text} ${formatLabel(record.format)}`.toLocaleLowerCase('fr').includes(needle));
 }
 
+function currentHistoryPage() {
+  return paginateHistory(filteredHistory(), state.historyPage, state.historyPageSize);
+}
+
+function scheduleHistoryFit() {
+  cancelAnimationFrame(state.historyFitFrame);
+  state.historyFitFrame = requestAnimationFrame(() => {
+    if (workspace?.screen !== 'history') return;
+    const wrapper = ui.historyBody.closest('.history-table-wrap');
+    const row = ui.historyBody.querySelector('tr');
+    if (!wrapper || !row || wrapper.clientHeight < 1) return;
+    const css = getComputedStyle(wrapper);
+    const rowHeight = parseFloat(css.getPropertyValue('--history-row-height')) || row.getBoundingClientRect().height;
+    const gap = parseFloat(css.getPropertyValue('--history-row-gap')) || 0;
+    const head = wrapper.querySelector('thead');
+    const headerHeight = head && getComputedStyle(head).position !== 'absolute' ? head.getBoundingClientRect().height : 0;
+    const capacity = Math.max(1, Math.min(100, Math.floor((wrapper.clientHeight - headerHeight + gap) / (rowHeight + gap))));
+    if (capacity !== state.historyPageSize) {
+      const first = state.historyPage * state.historyPageSize;
+      state.historyPageSize = capacity;
+      state.historyPage = Math.floor(first / capacity);
+      renderHistory();
+    }
+  });
+}
+
+function changeHistoryPage(delta) {
+  state.pendingDelete = state.pendingDeleteBatch = null;
+  ui.clearConfirm.hidden = true;
+  ui.clearHistory.setAttribute('aria-expanded', 'false');
+  state.historyPage = Math.max(0, state.historyPage + delta);
+  renderHistory();
+}
+
 function sameCode(left, right) {
   return !!left && !!right && left.format === right.format && left.text === right.text;
 }
@@ -388,7 +461,7 @@ function focusHistoryAction(index) {
 }
 
 function cancelDeleteScan() {
-  const index = filteredHistory().findIndex((record) => sameCode(record, state.pendingDelete));
+  const index = currentHistoryPage().rows.findIndex((record) => sameCode(record, state.pendingDelete));
   state.pendingDelete = null;
   renderHistory();
   focusHistoryAction(index);
@@ -410,7 +483,7 @@ function removeHistoryRecords(keys) {
 
 function deleteScan() {
   const target = state.pendingDelete;
-  const visibleIndex = filteredHistory().findIndex((record) => sameCode(record, target));
+  const visibleIndex = currentHistoryPage().rows.findIndex((record) => sameCode(record, target));
   const index = state.records.findIndex((record) => sameCode(record, target));
   state.pendingDelete = null;
   if (index < 0) {
@@ -438,18 +511,18 @@ function deleteSelectedScans() {
   if (removed) toast(`${removed} scan${removed > 1 ? 's supprimés' : ' supprimé'}`);
 }
 
-function updateHistorySelection(visible) {
+function updateHistorySelection(visible, displayed = visible) {
   state.selectedHistory = reconcileHistorySelection(state.records, state.selectedHistory);
   const selectedCount = state.selectedHistory.size;
   const visibleSelected = visible.filter((record) => state.selectedHistory.has(historyKey(record))).length;
-  const hiddenCount = selectedCount - visibleSelected;
+  const hiddenCount = selectedCount - displayed.filter((record) => state.selectedHistory.has(historyKey(record))).length;
   ui.historySelection.hidden = state.records.length === 0;
   ui.selectAllHistory.disabled = visible.length === 0;
   ui.selectAllHistory.checked = visible.length > 0 && visibleSelected === visible.length;
   ui.selectAllHistory.indeterminate = visibleSelected > 0 && visibleSelected < visible.length;
   ui.selectAllHistoryLabel.textContent = ui.searchHistory.value.trim() ? 'Sélectionner les résultats' : 'Tout sélectionner';
   ui.selectionSummary.textContent = selectedCount
-    ? `${selectedCount} sélectionné${selectedCount > 1 ? 's' : ''}${hiddenCount ? ` · ${hiddenCount} hors du filtre` : ''}`
+    ? `${selectedCount} sélectionné${selectedCount > 1 ? 's' : ''}${hiddenCount ? ` · ${hiddenCount} non affiché${hiddenCount > 1 ? 's' : ''}` : ''}`
     : 'Aucune sélection';
   ui.clearSelection.hidden = selectedCount === 0;
   ui.copySelection.disabled = ui.deleteSelection.disabled = selectedCount === 0;
@@ -466,9 +539,9 @@ function updateHistorySelection(visible) {
   ui.deleteSelection.setAttribute('aria-expanded', String(!!deleting));
   if (deleting) {
     ui.deleteSelectionTitle.textContent = `Supprimer ${deleting} scan${deleting > 1 ? 's sélectionnés' : ' sélectionné'} ?`;
-    const hiddenDeleting = deleting - visible.filter((record) => state.pendingDeleteBatch.has(historyKey(record))).length;
+    const hiddenDeleting = deleting - displayed.filter((record) => state.pendingDeleteBatch.has(historyKey(record))).length;
     ui.deleteSelectionHint.textContent = hiddenDeleting
-      ? `${hiddenDeleting} ${hiddenDeleting === 1 ? 'de ces scans est masqué' : 'de ces scans sont masqués'} par le filtre actuel.` : 'Seules les lignes sélectionnées seront supprimées.';
+      ? `${hiddenDeleting} ${hiddenDeleting === 1 ? 'de ces scans n’est pas affiché' : 'de ces scans ne sont pas affichés'} sur cette page.` : 'Seules les lignes sélectionnées seront supprimées.';
   }
 }
 
@@ -480,9 +553,15 @@ function renderHistory() {
     state.pendingDelete = null;
   }
   const visible = filteredHistory();
-  updateHistorySelection(visible);
+  const page = paginateHistory(visible, state.historyPage, state.historyPageSize);
+  state.historyPage = page.page;
+  ui.historyPagePrevious.disabled = page.page === 0;
+  ui.historyPageNext.disabled = page.page >= page.pageCount - 1;
+  ui.historyPageStatus.textContent = `${page.page + 1} / ${page.pageCount}`;
+  ui.historyPageStatus.setAttribute('aria-label', `Page ${page.page + 1} sur ${page.pageCount} · ${page.total ? page.start + 1 : 0} à ${page.end} sur ${page.total} codes`);
+  updateHistorySelection(visible, page.rows);
   const fragment = document.createDocumentFragment();
-  for (const record of visible) {
+  for (const record of page.rows) {
     const row = document.createElement('tr');
     const key = historyKey(record);
     row.classList.toggle('is-selected', state.selectedHistory.has(key));
@@ -601,6 +680,7 @@ function renderHistory() {
   ui.clearHistory.disabled = state.records.length === 0;
   workspace?.syncHistory({ total, unique: state.records.length });
   renderRecentReads();
+  scheduleHistoryFit();
   if (focusedConfirmation) ($(focusedConfirmation) || ui.searchHistory).focus({ preventScroll: true });
   if (focusedSelection) {
     const control = [...ui.historyBody.querySelectorAll('.history-select')].find((checkbox) => historyCheckboxKeys.get(checkbox) === focusedSelection);
@@ -624,6 +704,7 @@ function acceptResult(result, source = 'image') {
   const index = state.records.findIndex((record) => record.format === format && record.text === result.text);
   const existing = index >= 0 ? state.records.splice(index, 1)[0] : null;
   const record = { text: result.text, format, timestamp: new Date().toISOString(), count: (existing?.count || 0) + 1 };
+  state.historyPage = 0;
   state.records.unshift(record);
   state.records.length = Math.min(state.records.length, HISTORY_LIMIT);
   showResult(record);
@@ -660,7 +741,9 @@ function drawBoxes(results, width, height) {
 function updateScanGuide() {
   const width = ui.video.videoWidth;
   const height = ui.video.videoHeight;
-  ui.scanGuide.hidden = !state.running || ui.scanRegion.value !== 'center' || !width || !height;
+  const manual = ui.scanMode.value !== 'auto';
+  ui.scanGuide.hidden = !state.running || (!manual && ui.scanRegion.value !== 'center') || !width || !height;
+  ui.scanGuideLabel.textContent = manual ? 'Code à viser' : 'Zone de recherche';
   if (ui.scanGuide.hidden) return;
   // The camera may expose more pixels than the analysis budget (e.g. 8K).
   // Compute the same crop on the bounded analysis frame, then map it to video.
@@ -683,6 +766,212 @@ function cameraFrameSize(width, height) {
   return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
 }
 
+function isScannerSurface() {
+  return workspace?.screen === 'scanner' || (workspace?.screen === 'result' && !workspace.isMobile);
+}
+
+// One decoder pipeline for camera and imported images. An aborted older request
+// must settle before the next one enters the shared WASM reader.
+function decodeImage(image, options) {
+  const pending = decoderQueue.then(() => {
+    if (options.signal?.aborted) throw new DOMException('Lecture interrompue.', 'AbortError');
+    return readFrame(image, options);
+  });
+  decoderQueue = pending.catch(() => {});
+  return pending;
+}
+
+function cancelCameraReading() {
+  state.scanCycle += 1;
+  clearTimeout(state.timer);
+  state.scanAbort?.abort();
+  state.scanAbort = null;
+  manualScanner?.cancel();
+}
+
+function beginCameraReading() {
+  cancelCameraReading();
+  state.manualNotice = '';
+  ui.overlayCanvas.hidden = true;
+  if (!state.running) { setControls(); return; }
+  if (ui.scanMode.value === 'auto') {
+    state.scanAbort = new AbortController();
+    status('Recherche d’un code…', 'scanning');
+    void scanFrame(state.cameraToken, state.scanCycle);
+  } else {
+    status('Visée manuelle', 'aiming');
+  }
+  updateScanGuide();
+  setControls();
+  if (ui.scanMode.value !== 'auto' && isScannerSurface() &&
+      [ui.startCamera, ui.stopCamera, ui.scanModeManual, ui.scanModeAuto].includes(document.activeElement) && !ui.manualScan.disabled) {
+    ui.manualScan.focus({ preventScroll: true });
+  }
+}
+
+function changeScanMode(value) {
+  ui.scanMode.value = value === 'auto' ? 'auto' : 'manual';
+  state.detectionRevision += 1;
+  state.seen.clear();
+  state.visibleCodes.clear();
+  beginCameraReading();
+  savePreferences();
+}
+
+function captureManualFrame() {
+  if (!state.running || ui.scanMode.value === 'auto' || !isScannerSurface() ||
+      document.hidden || ui.video.readyState < 2 || !ui.video.videoWidth) return null;
+  const size = cameraFrameSize(ui.video.videoWidth, ui.video.videoHeight);
+  frameCanvas.width = size.width;
+  frameCanvas.height = size.height;
+  frameContext.drawImage(ui.video, 0, 0, size.width, size.height);
+  return {
+    image: frameContext.getImageData(0, 0, size.width, size.height),
+    ...size, region: getScanRegion(size.width, size.height, 'center'),
+    cameraToken: state.cameraToken, revision: state.detectionRevision,
+    mode: ui.formatSelect.value, profile: ui.detectionProfile.value, tryHarder: ui.tryHarder.checked,
+  };
+}
+
+function manualStateChanged(event) {
+  if (state.running && ui.scanMode.value !== 'auto' && isScannerSurface()) {
+    if (event.status === 'scanning') {
+      state.manualNotice = '';
+      ui.overlayCanvas.hidden = true;
+      status('Lecture en cours…', 'scanning');
+    } else if (event.status === 'success') {
+      state.manualNotice = 'Code lu. Prêt pour le prochain appui.';
+      status('Code lu', 'success');
+    } else if (event.status === 'not-found') {
+      state.manualNotice = 'Aucun code lu. Ajuste la visée puis réessaie.';
+      status('Aucun code dans le cadre', 'warning');
+    } else if (event.status === 'error') {
+      state.manualNotice = 'Lecture interrompue. Tu peux réessayer.';
+      status('Lecture interrompue', 'warning');
+      message('La lecture ponctuelle n’a pas abouti. Ajuste la visée puis réessaie, ou importe une image.', 'warning');
+    } else if (event.status === 'cancelled') {
+      state.manualNotice = '';
+      status('Visée manuelle', 'aiming');
+    }
+  }
+  setControls();
+}
+
+function triggerManualScan() {
+  if (!state.ready || !state.running || state.cameraApplying || manualScanner.isBusy ||
+      state.importing || document.hidden || !isScannerSurface() ||
+      ui.scanMode.value === 'auto' || ui.video.readyState < 2 || !ui.helpPanel.hidden) return false;
+  message();
+  prepareSound();
+  void manualScanner.trigger({ timeoutMs: Number(ui.manualTimeout.value) });
+  return true;
+}
+
+function renderTorchButton(description = state.cameraController?.describe()) {
+  const control = description?.active && description.controls.find((entry) => entry.key === 'torch');
+  const on = control?.value === true;
+  const available = Boolean(control && !control.disabled);
+  ui.torchToggle.disabled = !available || state.cameraApplying || Boolean(manualScanner?.isBusy);
+  ui.torchToggle.setAttribute('aria-pressed', String(on));
+  ui.torchLabel.textContent = on ? 'Allumée' : 'Lampe';
+  const label = !description?.active ? 'Active la caméra pour utiliser la lampe'
+    : !available ? 'Lampe indisponible pour cette caméra ou ce navigateur'
+      : on ? 'Éteindre la lampe' : 'Allumer la lampe';
+  ui.torchToggle.title = label;
+  ui.torchToggle.setAttribute('aria-label', label);
+}
+
+function currentShortcut() {
+  return presetScanShortcut(ui.scanShortcut.value, state.customShortcut);
+}
+
+function updateShortcutControls(text) {
+  const binding = currentShortcut();
+  if (ui.scanShortcut.value !== 'custom' || state.customShortcut) state.shortcutSelection = ui.scanShortcut.value;
+  const customOption = ui.scanShortcut.querySelector('option[value="custom"]');
+  customOption.textContent = state.customShortcut ? `Touche associée : ${state.customShortcut.label}` : 'Touche associée';
+  ui.shortcutCancel.hidden = !state.shortcutSession;
+  ui.shortcutTest.disabled = !binding || Boolean(state.shortcutSession);
+  ui.scanShortcut.disabled = Boolean(state.shortcutSession);
+  ui.shortcutLearn.setAttribute('aria-pressed', String(state.shortcutSession === 'learn'));
+  ui.shortcutLearn.textContent = state.shortcutSession === 'learn' ? 'En attente d’un bouton…' : 'Associer un bouton';
+  if (text !== undefined) ui.shortcutStatus.textContent = text;
+  else ui.shortcutStatus.textContent = binding ? `Bouton configuré : ${binding.label}. Utilisable dans Scanner, caméra active, en mode manuel.` : 'Déclenchement avec le bouton Scanner à l’écran.';
+  ui.manualScan.title = binding ? `Scanner · ${binding.label}` : 'Scanner le code visé';
+}
+
+function stopShortcutSession(text) {
+  clearTimeout(state.shortcutTimer);
+  state.shortcutSession = null;
+  state.pressedKeys.clear();
+  updateShortcutControls(text);
+}
+
+function startShortcutSession(kind) {
+  if (kind === 'test' && !currentShortcut()) return;
+  stopShortcutSession();
+  state.shortcutSession = kind;
+  updateShortcutControls(kind === 'learn' ? 'Appuie sur le bouton à associer. Échap pour annuler.'
+    : `Appuie sur ${currentShortcut().label} pour vérifier sa réception. Aucun scan ne sera enregistré.`);
+  (kind === 'learn' ? ui.shortcutLearn : ui.shortcutTest).focus({ preventScroll: true });
+  state.shortcutTimer = setTimeout(() => stopShortcutSession('Aucune touche compatible reçue. Ce bouton n’est peut-être pas transmis par le navigateur ; essaie une touche de clavier.'), 8000);
+}
+
+function handleScanShortcut(event) {
+  if (event.defaultPrevented || event.isComposing) return false;
+  const target = event.target;
+  const key = event.code || event.key;
+  const manualButton = target?.closest?.('#manualScan');
+  const buttonKey = ['Enter', ' ', 'Spacebar'].includes(event.key) && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
+  // Consume native Enter/Space as well as configured keys. Holding Enter on a
+  // focused button must never generate repeated click-driven scans.
+  if (manualButton && buttonKey) {
+    if (event.repeat || state.pressedKeys.has(key) || manualScanner.isBusy) {
+      event.preventDefault(); state.pressedKeys.add(key); return true;
+    }
+    if (triggerManualScan()) {
+      event.preventDefault(); state.pressedKeys.add(key); return true;
+    }
+  }
+  if (event.repeat) {
+    if (state.pressedKeys.has(key) || (state.shortcutSession && target?.closest?.('#shortcutLearn, #shortcutTest'))) {
+      event.preventDefault(); return true;
+    }
+    return false;
+  }
+  const editing = target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]');
+  if (state.shortcutSession && workspace?.screen === 'settings' && workspace.settingsPage === 'trigger') {
+    if (event.key === 'Escape') { event.preventDefault(); stopShortcutSession('Association annulée.'); return true; }
+    if (editing || target?.closest?.('#shortcutCancel')) return false;
+    const candidate = shortcutFromEvent(event);
+    if (!candidate) return false;
+    if (state.shortcutSession === 'test') {
+      if (!matchesScanShortcut(event, currentShortcut())) {
+        ui.shortcutStatus.textContent = `${candidate.label} reçu ; le bouton attendu est ${currentShortcut().label}.`;
+        return false;
+      }
+      event.preventDefault();
+      stopShortcutSession(`${candidate.label} reçu. Le déclencheur est prêt dans Scanner.`);
+      return true;
+    }
+    event.preventDefault();
+    state.customShortcut = candidate;
+    ui.scanShortcut.value = 'custom';
+    stopShortcutSession(`${candidate.label} associé. Utilise « Tester le bouton » pour le vérifier.`);
+    savePreferences();
+    return true;
+  }
+  const interactive = target?.closest?.('button, a, summary, [role="button"], [role="switch"], [role="checkbox"], [role="slider"]');
+  if (editing || (interactive && interactive !== ui.manualScan) || document.hidden || !isScannerSurface() ||
+      !state.running || ui.scanMode.value === 'auto' || !ui.helpPanel.hidden || !matchesScanShortcut(event, currentShortcut())) return false;
+  if (state.pressedKeys.has(key)) { event.preventDefault(); return true; }
+  if (manualScanner.isBusy || state.cameraApplying) { event.preventDefault(); state.pressedKeys.add(key); return true; }
+  if (!triggerManualScan()) return false;
+  event.preventDefault();
+  state.pressedKeys.add(key);
+  return true;
+}
+
 function cameraValueText(value, control) {
   if (value == null) return '—';
   if (control.type === 'checkbox') return value ? 'Activé' : 'Désactivé';
@@ -693,8 +982,15 @@ function cameraValueText(value, control) {
 }
 
 function renderCameraSettings(description = state.cameraController?.describe()) {
+  renderTorchButton(description);
   ui.cameraSettingsControls.replaceChildren();
   ui.resetCameraSettings.disabled = !description?.active || !description?.adjustable || state.cameraApplying;
+  const controls = description?.active ? description.controls : [];
+  const page = paginateHistory(controls, state.cameraControlPage, workspace?.isMobile ? 1 : 2);
+  state.cameraControlPage = page.page;
+  ui.cameraControlPrev.disabled = page.page === 0 || state.cameraApplying;
+  ui.cameraControlNext.disabled = page.page >= page.pageCount - 1 || state.cameraApplying;
+  ui.cameraControlPage.textContent = controls.length ? `${page.page + 1} / ${page.pageCount}` : 'Aucune commande';
   if (!description?.active) {
     ui.cameraSettingsStatus.textContent = 'Active la webcam pour afficher ses réglages disponibles.';
     ui.cameraDetails.textContent = 'Aucune caméra active';
@@ -704,7 +1000,7 @@ function renderCameraSettings(description = state.cameraController?.describe()) 
   ui.cameraSettingsStatus.textContent = state.cameraApplying ? 'Application du réglage…'
     : description.adjustable ? 'Réglages proposés par cette caméra. Les valeurs affichées sont celles du matériel.'
       : 'Cette caméra ou ce navigateur n’expose pas de réglage manuel. Essaie une autre résolution, un éclairage plus diffus ou le mode Précision.';
-  for (const control of description.controls) {
+  for (const control of page.rows) {
     const wrapper = document.createElement('div');
     wrapper.className = 'camera-control';
     const heading = document.createElement('div');
@@ -757,12 +1053,16 @@ function renderCameraSettings(description = state.cameraController?.describe()) 
 async function applyCameraSetting(key, value) {
   const controller = state.cameraController;
   if (!controller || state.cameraApplying) return;
+  const focused = document.activeElement;
   state.cameraApplying = true;
+  manualScanner?.cancel();
+  setControls();
   renderCameraSettings();
   try {
     if (key === 'reset') await controller.reset();
     else await controller.set(key, value);
-    if (controller === state.cameraController) toast(key === 'reset' ? 'Réglages de départ restaurés' : 'Réglage caméra appliqué');
+    if (controller === state.cameraController) toast(key === 'reset' ? 'Réglages de départ restaurés'
+      : key === 'torch' ? (value ? 'Lampe allumée' : 'Lampe éteinte') : 'Réglage caméra appliqué');
   } catch (error) {
     if (controller === state.cameraController) {
       message(error?.message || 'La caméra a refusé ce réglage ; ses valeurs actuelles ont été conservées.', 'warning');
@@ -771,23 +1071,25 @@ async function applyCameraSetting(key, value) {
     if (controller === state.cameraController) {
       state.cameraApplying = false;
       renderCameraSettings();
+      setControls();
       const target = $(key === 'reset' ? 'resetCameraSettings' : `camera-${key}`);
       if (workspace?.screen === 'settings') target?.focus({ preventScroll: true });
+      else if (focused === ui.torchToggle && !ui.manualScan.hidden && !ui.manualScan.disabled) ui.manualScan.focus({ preventScroll: true });
     }
   }
 }
 
 function releaseCamera(update = true) {
   state.cameraToken += 1;
-  clearTimeout(state.timer);
-  state.scanAbort?.abort();
-  state.scanAbort = null;
+  state.running = false;
+  state.starting = false;
+  state.manualNotice = '';
+  cancelCameraReading();
   state.cameraController?.destroy();
   state.cameraController = null;
   state.cameraApplying = false;
+  state.cameraControlPage = 0;
   state.visibleCodes.clear();
-  state.running = false;
-  state.starting = false;
   if (state.stream) for (const track of state.stream.getTracks()) track.stop();
   state.stream = null;
   ui.video.pause();
@@ -804,6 +1106,7 @@ function releaseCamera(update = true) {
 }
 
 function stopAll() {
+  state.pressedKeys.clear();
   state.imageToken += 1;
   state.imageAbort?.abort();
   state.imageAbort = null;
@@ -869,15 +1172,15 @@ async function startCamera() {
     if (token !== state.cameraToken) { stream.getTracks().forEach((track) => track.stop()); return; }
     state.starting = false;
     state.running = true;
-    state.scanAbort = new AbortController();
     state.seen.clear();
     ui.video.hidden = false;
     ui.emptyState.hidden = true;
-    status('Recherche d’un code…', 'scanning');
-    setControls();
+    status('Préparation de la caméra…', 'loading');
     const track = stream.getVideoTracks()[0];
     const controller = createCameraController(track);
     state.cameraController = controller;
+    state.cameraApplying = true;
+    setControls();
     track.addEventListener('ended', () => {
       if (token === state.cameraToken) {
         releaseCamera();
@@ -892,9 +1195,9 @@ async function startCamera() {
     } catch { /* Autofocus support varies; preserve an otherwise valid stream. */ }
     await listCameras();
     if (token === state.cameraToken) {
+      state.cameraApplying = false;
       renderCameraSettings();
-      updateScanGuide();
-      void scanFrame(token);
+      beginCameraReading();
     }
   } catch (error) {
     if (stream) stream.getTracks().forEach((track) => track.stop());
@@ -905,8 +1208,9 @@ async function startCamera() {
   }
 }
 
-async function scanFrame(token) {
-  if (token !== state.cameraToken || !state.running) return;
+async function scanFrame(token, cycle) {
+  const current = () => token === state.cameraToken && cycle === state.scanCycle && state.running && ui.scanMode.value === 'auto';
+  if (!current()) return;
   const started = performance.now();
   try {
     if (ui.video.readyState >= 2 && ui.video.videoWidth > 0) {
@@ -916,12 +1220,12 @@ async function scanFrame(token) {
       frameContext.drawImage(ui.video, 0, 0, frameCanvas.width, frameCanvas.height);
       const image = frameContext.getImageData(0, 0, frameCanvas.width, frameCanvas.height);
       const revision = state.detectionRevision;
-      const results = await readFrame(image, {
+      const results = await decodeImage(image, {
         mode: ui.formatSelect.value, tryHarder: ui.tryHarder.checked,
         profile: ui.detectionProfile.value, region: ui.scanRegion.value, signal: state.scanAbort?.signal,
         budgetMs: ui.detectionProfile.value === 'precision' ? 700 : 350,
       });
-      if (token !== state.cameraToken || !state.running) return;
+      if (!current()) return;
       if (revision === state.detectionRevision) {
         drawBoxes(results, frameCanvas.width, frameCanvas.height);
         ui.scanMetrics.textContent = `${frameCanvas.width} × ${frameCanvas.height} · analyse ${Math.round(performance.now() - started)} ms`;
@@ -931,13 +1235,13 @@ async function scanFrame(token) {
       }
     }
   } catch {
-    if (token !== state.cameraToken) return;
+    if (!current()) return;
     releaseCamera();
     message('La lecture vidéo a rencontré une erreur. Réessaie la caméra ou importe une photo nette.', 'error');
     return;
   }
-  if (token === state.cameraToken && state.running) {
-    state.timer = setTimeout(() => void scanFrame(token), Math.max(80, 300 - (performance.now() - started)));
+  if (current()) {
+    state.timer = setTimeout(() => void scanFrame(token, cycle), Math.max(80, 300 - (performance.now() - started)));
   }
 }
 
@@ -991,7 +1295,7 @@ async function importFiles(input) {
       ui.emptyState.hidden = true;
       ui.overlayCanvas.hidden = true;
       const scanStarted = performance.now();
-      const results = await readFrame(context.getImageData(0, 0, canvas.width, canvas.height), {
+      const results = await decodeImage(context.getImageData(0, 0, canvas.width, canvas.height), {
         mode: ui.formatSelect.value, tryHarder: ui.tryHarder.checked,
         profile: ui.detectionProfile.value, region: 'full', budgetMs: 1500,
         signal: state.imageAbort?.signal,
@@ -1055,6 +1359,7 @@ function clearHistory() {
   state.pendingDelete = null;
   state.pendingDeleteBatch = null;
   state.selectedHistory.clear();
+  state.historyPage = 0;
   ui.searchHistory.value = '';
   resetResult();
   ui.clearConfirm.hidden = true;
@@ -1069,6 +1374,7 @@ function toggleHelp(open = ui.helpPanel.hidden) {
   ui.helpPanel.hidden = !open;
   ui.helpToggle.setAttribute('aria-expanded', String(open));
   if (open) {
+    manualScanner?.cancel();
     ui.helpPanel.scrollIntoView({ block: 'start', behavior: 'instant' });
     $('helpTitle')?.focus({ preventScroll: true });
   } else ui.helpToggle.focus({ preventScroll: true });
@@ -1083,6 +1389,25 @@ function bindEvents() {
   });
   ui.startCamera.addEventListener('click', () => void startCamera());
   ui.stopCamera.addEventListener('click', stopAll);
+  ui.manualScan.addEventListener('click', triggerManualScan);
+  ui.scanModeManual.addEventListener('click', () => changeScanMode('manual'));
+  ui.scanModeAuto.addEventListener('click', () => changeScanMode('auto'));
+  ui.scanMode.addEventListener('change', () => changeScanMode(ui.scanMode.value));
+  ui.manualTimeout.addEventListener('change', savePreferences);
+  ui.torchToggle.addEventListener('click', () => {
+    const control = state.cameraController?.describe().controls.find((entry) => entry.key === 'torch');
+    if (control && !control.disabled && !ui.torchToggle.disabled) void applyCameraSetting('torch', !control.value);
+  });
+  ui.scanShortcut.addEventListener('change', () => {
+    if (ui.scanShortcut.value === 'custom' && !state.customShortcut) {
+      ui.scanShortcut.value = state.shortcutSelection;
+      startShortcutSession('learn');
+    }
+    else { stopShortcutSession(); savePreferences(); }
+  });
+  ui.shortcutLearn.addEventListener('click', () => startShortcutSession('learn'));
+  ui.shortcutTest.addEventListener('click', () => startShortcutSession('test'));
+  ui.shortcutCancel.addEventListener('click', () => stopShortcutSession('Association annulée.'));
   ui.cameraSelect.addEventListener('change', () => { if (state.running) void startCamera(); });
   for (const control of [ui.cameraResolution, ui.cameraFrameRate]) {
     control.addEventListener('change', () => {
@@ -1091,8 +1416,11 @@ function bindEvents() {
     });
   }
   ui.resetCameraSettings.addEventListener('click', () => void applyCameraSetting('reset'));
+  ui.cameraControlPrev.addEventListener('click', () => { state.cameraControlPage -= 1; renderCameraSettings(); });
+  ui.cameraControlNext.addEventListener('click', () => { state.cameraControlPage += 1; renderCameraSettings(); });
   for (const control of [ui.scanRegion, ui.detectionProfile]) {
     control.addEventListener('change', () => {
+      manualScanner.cancel();
       state.detectionRevision += 1; ui.overlayCanvas.hidden = true;
       updateScanGuide(); savePreferences();
     });
@@ -1103,6 +1431,9 @@ function bindEvents() {
   ui.video.addEventListener('resize', updateScanGuide);
   if (typeof ResizeObserver === 'function') new ResizeObserver(updateScanGuide).observe(ui.viewport);
   else window.addEventListener('resize', updateScanGuide);
+  const historyWrap = ui.historyBody.closest('.history-table-wrap');
+  if (typeof ResizeObserver === 'function') new ResizeObserver(scheduleHistoryFit).observe(historyWrap);
+  else window.addEventListener('resize', scheduleHistoryFit);
   ui.beepVolume.addEventListener('input', updateVolumeLabel);
   ui.beepVolume.addEventListener('change', savePreferences);
   ui.testSound.addEventListener('click', async () => {
@@ -1123,9 +1454,12 @@ function bindEvents() {
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
   });
   ui.searchHistory.addEventListener('input', () => {
+    state.historyPage = 0;
     state.pendingDelete = state.pendingDeleteBatch = null;
     renderHistory();
   });
+  ui.historyPagePrevious.addEventListener('click', () => changeHistoryPage(-1));
+  ui.historyPageNext.addEventListener('click', () => changeHistoryPage(1));
   ui.selectAllHistory.addEventListener('change', () => {
     state.selectedHistory = selectVisibleHistory(state.records, state.selectedHistory, filteredHistory(), ui.selectAllHistory.checked);
     state.pendingDelete = state.pendingDeleteBatch = null;
@@ -1181,12 +1515,14 @@ function bindEvents() {
       if (control === ui.keepHistory) persistHistory();
       if (control === ui.beepEnabled) prepareSound();
       if (control === ui.formatSelect || control === ui.tryHarder) {
+        manualScanner.cancel();
         state.detectionRevision += 1; ui.overlayCanvas.hidden = true;
       }
       if (control === ui.formatSelect) { state.seen.clear(); state.visibleCodes.clear(); }
     });
   }
   document.addEventListener('keydown', (event) => {
+    if (handleScanShortcut(event)) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'o') {
       event.preventDefault();
       if (!ui.importImage.disabled) ui.importImage.click();
@@ -1196,8 +1532,14 @@ function bindEvents() {
       else if (state.pendingDeleteBatch) cancelDeleteSelection();
       else if (!ui.clearConfirm.hidden) ui.cancelClearHistory.click();
       else if (!ui.helpPanel.hidden) toggleHelp(false);
+      else if (manualScanner.isBusy) manualScanner.cancel();
       else stopAll();
     }
+  });
+  document.addEventListener('keyup', (event) => state.pressedKeys.delete(event.code || event.key));
+  window.addEventListener('blur', () => {
+    state.pressedKeys.clear();
+    if (state.shortcutSession) stopShortcutSession('Association interrompue. Relance-la pour réessayer.');
   });
   document.addEventListener('paste', (event) => {
     const files = Array.from(event.clipboardData?.files || []);
@@ -1220,6 +1562,7 @@ function bindEvents() {
     if (event.dataTransfer?.files?.length) void importFiles(event.dataTransfer.files);
   });
   document.addEventListener('visibilitychange', () => {
+    if (document.hidden && state.shortcutSession) stopShortcutSession('Association interrompue.');
     if (document.hidden && (state.running || state.starting)) {
       releaseCamera();
       status('Caméra arrêtée — fenêtre en arrière-plan');
@@ -1230,12 +1573,37 @@ function bindEvents() {
 }
 
 async function boot() {
+  manualScanner = createManualScanner({
+    capture: captureManualFrame,
+    decode: async (frame, { signal, budgetMs }) => {
+      const started = performance.now();
+      const results = await decodeImage(frame.image, {
+        mode: frame.mode, profile: frame.profile, tryHarder: frame.tryHarder,
+        region: 'center', signal, budgetMs: Math.min(budgetMs, frame.profile === 'precision' ? 700 : 350),
+      });
+      if (!signal.aborted && frame.cameraToken === state.cameraToken && frame.revision === state.detectionRevision) {
+        ui.scanMetrics.textContent = `${frame.width} × ${frame.height} · analyse ${Math.round(performance.now() - started)} ms`;
+      }
+      return results;
+    },
+    accept: (result, frame) => {
+      if (!state.running || frame.cameraToken !== state.cameraToken || frame.revision !== state.detectionRevision ||
+          ui.scanMode.value === 'auto' || !isScannerSurface() || document.hidden) return;
+      drawBoxes([result], frame.width, frame.height);
+      acceptResult(result, 'manual');
+    },
+    onState: manualStateChanged,
+  });
   loadPreferences();
   workspace = createWorkspaceUI({
-    onScreenChange: ({ screen, isMobile, reason }) => {
+    onScreenChange: ({ screen, isMobile, reason, settingsPage }) => {
+      state.pressedKeys.clear();
+      if (screen !== 'scanner' && !(screen === 'result' && !isMobile)) manualScanner.cancel();
+      if ((screen !== 'settings' || (settingsPage && settingsPage !== 'trigger')) && state.shortcutSession) stopShortcutSession('Association interrompue.');
       // Settings retain the same live preview so hardware adjustments stay visible.
       // Leaving it for History or a mobile result also invalidates a pending prompt.
       if ((screen === 'history' || (screen === 'result' && isMobile)) && (state.running || state.starting)) releaseCamera();
+      if ((screen === 'scanner' || (screen === 'result' && !isMobile)) && state.running && ui.scanMode.value !== 'auto') status('Visée manuelle', 'aiming');
       if (reason !== 'init') {
         if (state.pendingDelete || state.pendingDeleteBatch) {
           state.pendingDelete = state.pendingDeleteBatch = null;
@@ -1248,6 +1616,9 @@ async function boot() {
       }
       const cameraToken = state.cameraToken;
       requestAnimationFrame(() => {
+        setControls();
+        scheduleHistoryFit();
+        if (screen === 'settings') renderCameraSettings();
         updateScanGuide();
         // Some mobile browsers pause media when its DOM container changes.
         // Resume only this still-active session, never a stopped/replaced stream.
@@ -1265,6 +1636,7 @@ async function boot() {
   workspace.applyMotion(ui.motionPreference.value);
   workspace.applyDensity(ui.densityPreference.value);
   bindEvents();
+  updateShortcutControls();
   renderHistory();
   if (state.records.length) {
     showResult(state.records[0]);

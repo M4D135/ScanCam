@@ -1,4 +1,8 @@
 const SCREENS = new Set(['scanner', 'result', 'history', 'settings']);
+const SETTINGS_PAGES = {
+  home: 'Réglages', reading: 'Lecture', trigger: 'Déclenchement', camera: 'Caméra',
+  hardware: 'Commandes caméra', sound: 'Son', data: 'Copie et historique', appearance: 'Interface',
+};
 const SCREEN_COPY = {
   scanner: { title: 'Scanner', subtitle: 'Caméra ou image' },
   result: { title: 'Résultat', subtitle: 'Contenu du dernier code' },
@@ -14,7 +18,14 @@ function screenFromHash(hash) {
   let value;
   try { value = decodeURIComponent(String(hash || '').replace(/^#/, '')); }
   catch { return null; }
+  if (value.startsWith('settings/') && Object.hasOwn(SETTINGS_PAGES, value.slice(9))) return 'settings';
   return SCREENS.has(value) ? value : Object.hasOwn(LEGACY_ROUTES, value) ? LEGACY_ROUTES[value] : null;
+}
+
+function settingsFromHash(hash) {
+  if (hash === '#cameraSettings') return 'hardware';
+  const name = String(hash || '').replace(/^#settings\/?/, '');
+  return Object.hasOwn(SETTINGS_PAGES, name) ? name : 'home';
 }
 
 function countText(value) {
@@ -41,11 +52,16 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
   const previewStage = byId('previewStage');
   const scannerPreviewSlot = byId('scannerPreviewSlot');
   const cameraPreviewSlot = byId('cameraPreviewSlot');
+  const hardwarePreviewSlot = byId('hardwarePreviewSlot');
+  const settingsPanels = [...byId('settingsPanel').querySelectorAll('[data-settings-page]')];
   const scrollPositions = new Map();
   const focusPositions = new Map();
   const removers = [];
   const originalScrollRestoration = window.history.scrollRestoration;
   let current = screenFromHash(window.location.hash) || 'scanner';
+  let settingsPage = settingsFromHash(window.location.hash);
+  let resultPage = 'raw';
+  let helpPage = 0;
   let mobile = mobileQuery.matches;
   let motionPreference = 'auto';
   let hasResult = false;
@@ -56,13 +72,14 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
   let entryTimer = 0;
   let resultTimer = 0;
   let activeSurface = null;
+  let touchY = null;
 
-  // Each screen restores its own position, including when browser Back is used.
+  // The document is fixed; each screen restores focus rather than a page offset.
   try { window.history.scrollRestoration = 'manual'; } catch { /* Optional on file URLs. */ }
 
-  function listen(target, type, handler) {
-    target.addEventListener(type, handler);
-    removers.push(() => target.removeEventListener(type, handler));
+  function listen(target, type, handler, options) {
+    target.addEventListener(type, handler, options);
+    removers.push(() => target.removeEventListener(type, handler, options));
   }
 
   function listenMedia(query, handler) {
@@ -82,7 +99,7 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
   }
 
   function focusKey(screen = current, isMobile = mobile) {
-    return `${isMobile ? 'mobile' : 'desktop'}:${screen}`;
+    return `${isMobile ? 'mobile' : 'desktop'}:${screen}${screen === 'settings' ? `:${settingsPage}` : ''}`;
   }
 
   function visible(element) {
@@ -96,7 +113,7 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
   }
 
   function rememberPosition() {
-    scrollPositions.set(positionKey(), window.scrollY || 0);
+    scrollPositions.set(positionKey(), 0);
     const focused = document.activeElement;
     if (focused && activeSurface?.contains(focused)) focusPositions.set(focusKey(), focused);
   }
@@ -116,7 +133,9 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
       const oldState = window.history.state;
       const state = oldState && typeof oldState === 'object' && !Array.isArray(oldState) ? { ...oldState } : {};
       state.scanlibreScreen = screen;
-      window.history[replace ? 'replaceState' : 'pushState'](state, '', `#${screen}`);
+      state.scancamSettingsPage = settingsPage;
+      const route = screen === 'settings' && settingsPage !== 'home' ? `settings/${settingsPage}` : screen;
+      window.history[replace ? 'replaceState' : 'pushState'](state, '', `#${route}`);
     } catch { /* Screen navigation remains usable when history writes are blocked. */ }
   }
 
@@ -158,17 +177,22 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
     const oldSurface = activeSurface;
     root.dataset.screen = current;
     root.dataset.layout = mobile ? 'mobile' : 'desktop';
+    root.dataset.settingsPage = settingsPage;
+    byId('settingsBack').hidden = current !== 'settings' || settingsPage === 'home';
+    for (const panel of settingsPanels) panel.hidden = panel.dataset.settingsPage !== settingsPage;
 
     // Keep the exact same video/canvas nodes, stream and decoded image when the
     // user opens camera settings. Nothing is copied or decoded a second time.
-    const previewSlot = current === 'settings' ? cameraPreviewSlot : scannerPreviewSlot;
+    const previewSlot = current === 'settings'
+      ? settingsPage === 'hardware' ? hardwarePreviewSlot : cameraPreviewSlot : scannerPreviewSlot;
     if (previewStage && previewSlot && previewStage.parentElement !== previewSlot) previewSlot.append(previewStage);
 
     for (const panel of panels) panel.hidden = panel.dataset.screenPanel !== group;
     for (const panel of readerPanels) panel.hidden = mobile && panel.dataset.mobilePanel !== current;
     activeSurface = mobile && group === 'reader'
       ? readerPanels.find((panel) => panel.dataset.mobilePanel === current)
-      : panels.find((panel) => panel.dataset.screenPanel === group);
+      : current === 'settings' ? settingsPanels.find((panel) => panel.dataset.settingsPage === settingsPage)
+        : panels.find((panel) => panel.dataset.screenPanel === group);
 
     // On desktop both reader panels share the same workspace and navigation item.
     const activeNav = !mobile && current === 'result' ? 'scanner' : current;
@@ -179,16 +203,17 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
       if (item.getAttribute('role') === 'tab') item.setAttribute('aria-selected', String(active));
     }
     const copy = SCREEN_COPY[activeNav];
-    if (byId('pageTitle')) byId('pageTitle').textContent = copy.title;
+    const title = current === 'settings' ? SETTINGS_PAGES[settingsPage] : copy.title;
+    if (byId('pageTitle')) byId('pageTitle').textContent = title;
     if (byId('pageSubtitle')) byId('pageSubtitle').textContent = copy.subtitle;
-    document.title = `ScanCam — ${copy.title}`;
+    document.title = `ScanCam — ${title}`;
 
     if (current === 'result' || (!mobile && group === 'reader')) unreadResult = false;
     updateNotice();
 
     if (oldSurface !== activeSurface) {
       clearTimeout(entryTimer);
-      for (const panel of [...panels, ...readerPanels]) panel.classList.remove('screen-enter');
+      for (const panel of [...panels, ...readerPanels, ...settingsPanels]) panel.classList.remove('screen-enter');
       if (root.dataset.motion === 'full' && reason !== 'layout' && activeSurface) {
         const entering = activeSurface;
         entering.classList.add('screen-enter');
@@ -196,12 +221,11 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
       }
     }
 
-    onScreenChange?.({ screen: current, previous, isMobile: mobile, reason });
+    onScreenChange?.({ screen: current, previous, isMobile: mobile, reason, settingsPage });
 
     navigationFrame = requestAnimationFrame(() => {
       if (disposed || revision !== navigationRevision) return;
-      const targetScroll = scrollPositions.get(positionKey()) || 0;
-      if (restore) snapScroll(targetScroll);
+      snapScroll(0);
       // A passive breakpoint change only repairs focus if its previous element
       // has become hidden. It never steals focus from a still-visible control.
       const focused = document.activeElement;
@@ -224,16 +248,47 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
     if (disposed || !SCREENS.has(screen)) return false;
     const previous = current;
     const changed = screen !== current;
-    if (changed) rememberPosition();
+    const settingsChanged = screen === 'settings' && settingsPage !== 'home';
+    if (changed || settingsChanged) rememberPosition();
     current = screen;
-    if (changed || replace) writeRoute(screen, replace);
+    if (screen === 'settings') settingsPage = 'home';
+    if (changed || settingsChanged || replace) writeRoute(screen, replace);
     paint({ reason: 'navigation', previous, focus, restore: changed });
     return true;
+  }
+
+  function navigateSettings(page) {
+    if (disposed || !Object.hasOwn(SETTINGS_PAGES, page)) return false;
+    const previous = current;
+    rememberPosition();
+    current = 'settings';
+    settingsPage = page;
+    writeRoute(current);
+    paint({ reason: 'settings-page', previous, focus: true });
+    return true;
+  }
+
+  function paintResultPage(page = resultPage) {
+    const hasFields = byId('fieldCards').childElementCount > 0;
+    resultPage = page === 'fields' && hasFields ? 'fields' : 'raw';
+    byId('resultFieldsTab').hidden = !hasFields;
+    for (const panel of document.querySelectorAll('[data-result-page]')) panel.hidden = panel.dataset.resultPage !== resultPage;
+    for (const button of document.querySelectorAll('[data-result-nav]')) button.setAttribute('aria-pressed', String(button.dataset.resultNav === resultPage));
+  }
+
+  function paintHelpPage() {
+    const pages = [...document.querySelectorAll('.help-item')];
+    helpPage = Math.max(0, Math.min(pages.length - 1, helpPage));
+    pages.forEach((page, index) => { page.hidden = index !== helpPage; });
+    byId('helpPrevious').disabled = helpPage === 0;
+    byId('helpNext').disabled = helpPage >= pages.length - 1;
+    byId('helpPageStatus').textContent = `${helpPage + 1} / ${pages.length}`;
   }
 
   function notifyResult(record, { announce = true } = {}) {
     if (disposed || !record || typeof record.text !== 'string') return;
     hasResult = true;
+    paintResultPage('raw');
     const text = record.text.replace(/\s+/g, ' ').trim();
     const characters = Array.from(text);
     const preview = characters.length > 90 ? `${characters.slice(0, 89).join('')}…` : text;
@@ -253,6 +308,7 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
   function clearResult() {
     hasResult = false;
     unreadResult = false;
+    paintResultPage('raw');
     clearTimeout(resultTimer);
     for (const element of [resultPanel, notice].filter(Boolean)) element.classList.remove('is-result-new');
     if (noticePreview) noticePreview.textContent = '';
@@ -281,6 +337,10 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
 
   listen(document, 'click', (event) => {
     if (event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+    const settingsTrigger = event.target?.closest?.('[data-settings-nav]');
+    if (settingsTrigger) { event.preventDefault(); navigateSettings(settingsTrigger.dataset.settingsNav); return; }
+    const resultTrigger = event.target?.closest?.('[data-result-nav]');
+    if (resultTrigger) { event.preventDefault(); paintResultPage(resultTrigger.dataset.resultNav); return; }
     const trigger = event.target?.closest?.('[data-nav], a[href^="#"]');
     if (!trigger || trigger.hasAttribute('download') || trigger.getAttribute('target') === '_blank') return;
     const href = trigger.getAttribute('href');
@@ -304,12 +364,45 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
     if (activeSurface?.contains(event.target)) focusPositions.set(focusKey(), event.target);
   });
 
+  // Fixed viewport CSS handles modern browsers. This bounded touch guard also
+  // prevents rubber-banding in mobile browsers that ignore overscroll-behavior.
+  // Pinch zoom, text selection and native input gestures remain available.
+  listen(document, 'touchstart', (event) => {
+    touchY = event.touches.length === 1 ? event.touches[0].clientY : null;
+  }, { passive: true });
+  listen(document, 'touchmove', (event) => {
+    if (!mobile || event.touches.length !== 1 || (window.visualViewport?.scale || 1) > 1.01) {
+      touchY = null;
+      return;
+    }
+    const y = event.touches[0].clientY;
+    const delta = touchY == null ? 0 : y - touchY;
+    touchY = y;
+    if (event.target?.closest?.('input[type="range"], textarea, select')) return;
+    const boundary = event.target?.closest?.('#helpPanel, #appMessage');
+    if (boundary && !boundary.hidden) {
+      let element = event.target;
+      while (element && boundary.contains(element)) {
+        const remaining = element.scrollHeight - element.clientHeight;
+        const scrollable = remaining > 1 && /auto|scroll/.test(getComputedStyle(element).overflowY);
+        if (scrollable && ((delta > 0 && element.scrollTop > 0) || (delta < 0 && element.scrollTop < remaining - 1))) return;
+        if (element === boundary) break;
+        element = element.parentElement;
+      }
+    }
+    if (event.cancelable) event.preventDefault();
+  }, { passive: false });
+  listen(document, 'touchend', () => { touchY = null; }, { passive: true });
+  listen(document, 'touchcancel', () => { touchY = null; }, { passive: true });
+
   function restoreRoute() {
     const target = screenFromHash(window.location.hash) || 'scanner';
-    if (target === current) return;
+    const targetSettings = settingsFromHash(window.location.hash);
+    if (target === current && (target !== 'settings' || targetSettings === settingsPage)) return;
     const previous = current;
     rememberPosition();
     current = target;
+    settingsPage = targetSettings;
     if (window.location.hash === '#cameraSettings' && byId('cameraSettings')) byId('cameraSettings').open = true;
     paint({ reason: 'history', previous, focus: true, restore: true });
   }
@@ -321,16 +414,21 @@ export function createWorkspaceUI({ onScreenChange } = {}) {
     paint({ reason: 'layout', previous: current });
   });
   listenMedia(reducedQuery, () => { if (motionPreference === 'auto') applyMotion('auto'); });
+  listen(byId('helpPrevious'), 'click', () => { helpPage -= 1; paintHelpPage(); });
+  listen(byId('helpNext'), 'click', () => { helpPage += 1; paintHelpPage(); });
 
   if (window.location.hash === '#cameraSettings' && byId('cameraSettings')) byId('cameraSettings').open = true;
   applyMotion(byId('motionPreference')?.value || 'auto');
   applyDensity(byId('densityPreference')?.value || 'comfortable');
+  paintHelpPage();
+  paintResultPage();
   writeRoute(current, true);
   paint({ reason: 'init', previous: null });
 
   return {
-    navigate, notifyResult, clearResult, syncHistory, setActivity, applyMotion, applyDensity,
+    navigate, navigateSettings, notifyResult, clearResult, syncHistory, setActivity, applyMotion, applyDensity,
     get screen() { return current; },
+    get settingsPage() { return settingsPage; },
     get isMobile() { return mobile; },
     destroy() {
       disposed = true;

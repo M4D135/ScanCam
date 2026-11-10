@@ -1,4 +1,4 @@
-ScanCam 1.3.0 — Notices des composants tiers
+ScanCam 1.4.0 — Notices des composants tiers
 =============================================
 
 Le fichier autonome ScanCam.html contient le moteur de lecture et ces notices.

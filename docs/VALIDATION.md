@@ -1,6 +1,64 @@
-# Validation de ScanCam 1.3.0
+# Validation de ScanCam 1.4.0
 
-État de qualification du **10 novembre 2026**. La version 1.3.0 ajoute la suppression individuelle, la sélection multiple, les actions de lot et un horodatage plus lisible. Les qualifications antérieures ci-dessous restent attachées à leur version et à leur date.
+État de qualification du **10 novembre 2026**. La version 1.4.0 ajoute le déclenchement manuel, la commande de lampe lorsque le navigateur la propose et une interface organisée en écrans fixes. Les qualifications antérieures ci-dessous restent attachées à leur version et à leur date.
+
+## Qualification 1.4.0 — 10 novembre 2026
+
+Les contrôles ont été réalisés dans **Chrome sous Linux**, avec le HTML compilé et le banc de développement `tests/browser-camera-harness.mjs`. Ce banc fournit une **vidéo synthétique dessinée dans un canvas**, des codes fictifs et des pistes dont les capacités et les réglages sont simulés. Les changements de valeur observés concernent ces pistes simulées ; ils ne constituent pas une qualification de webcam, de flash ou de téléphone physique.
+
+### Lecture, déclenchement et caméra
+
+| Périmètre | Résultat | Portée |
+| --- | --- | --- |
+| Visée manuelle au repos | **Aucune lecture avant déclenchement** | L’aperçu reste actif sans enregistrer les codes présents. Un appui sur Scanner déclenche une recherche et enregistre un seul code. |
+| Relecture d’un article | **Compteur actualisé à chaque nouvel appui** | Plusieurs déclenchements devant le même QR augmentent son compteur sans imposer de retirer le code. |
+| Choix dans le cadre central | **Code centré retenu** | Avec deux codes dans la scène, le QR le plus proche du centre est retenu. Un Data Matrix placé hors du cadre n’est pas lu ; la tentative se termine à l’expiration du délai. |
+| Data Matrix pâle | **Lecture réussie dans le banc vidéo** | Le code fictif peu contrasté de la scène de démonstration est reconnu. Cet essai ne mesure pas les performances d’une caméra physique sur une étiquette réelle. |
+| Touche maintenue | **Une seule lecture** | Entrée maintenue pendant 1,4 seconde ne provoque pas de déclenchements répétés. |
+| Association et test | **Fonctionnels** | La touche Q est associée, testée puis utilisée pour déclencher une lecture. Une association annulée conserve le raccourci Entrée précédemment configuré. |
+| Manuel et Auto | **Transition fonctionnelle** | Les changements entre lecture continue et visée manuelle ont été exercés dans le banc vidéo. |
+| Lampe simulée | **État confirmé par la piste simulée** | Allumage et extinction sont vérifiés dans les valeurs retournées par la piste. La commande est désactivée lorsque la capacité est absente ; un refus n’affiche pas un faux état allumé. |
+| Commande de lampe ignorée | **Absence de confirmation signalée** | Après l’attente du retour de la piste simulée, l’interface indique que la caméra n’a pas confirmé le réglage. La valeur retournée reste `false` et le bouton conserve `aria-pressed="false"`. |
+| Arrêt et navigation | **Pistes libérées** | Une déconnexion simulée arrête la capture. L’ouverture d’Historique ou de Résultat en disposition mobile laisse zéro piste active dans le banc. |
+| Commandes caméra | **Valeurs appliquées dans la simulation** | Sur PC, le zoom passe de 1 à 1,5. En disposition mobile, la luminosité passe de 0 à 0,5. La pagination présente deux commandes par page sur PC et une sur mobile. |
+| Navigation de Réglages | **Route et écran cohérents** | Revenir à l’accueil de Réglages depuis une catégorie rétablit aussi la route `#settings`, notamment après `#settings/trigger`. |
+
+### Écrans fixes et historique
+
+Les dimensions ci-dessous sont celles de **cadres responsive de Chrome Linux**, en pixels CSS. Les essais de molette ne remplacent pas un contrôle tactile sur téléphone.
+
+| Périmètre | Résultat | Portée |
+| --- | --- | --- |
+| Réglages à 320 × 640 px | **Les sept catégories tiennent dans leur écran** | Pour Lecture, Déclenchement, Caméra, Commandes, Son, Copie et historique, et Interface, la zone de page mesure `clientHeight = scrollHeight = 473 px`. La hauteur du document reste de 640 px. |
+| Scanner à 320 × 640 px | **Pas de défilement du document observé** | Une commande de molette équivalant à deux pages laisse `scrollTop` à 0. Le bouton de déclenchement manuel mesure 70 px de haut. |
+| Scanner à 390 × 844 px | **Tient dans la zone disponible** | L’aperçu et les commandes restent dans l’écran. |
+| Paysage à 844 × 390 px | **Écrans contrôlés sans dépassement observé** | Lecture, Déclenchement, Historique et Commandes tiennent dans la vue. La navigation commence à y = 325 px. Une ligne d’historique mesure 104 px ; le bas de la commande matérielle contrôlée est à y = 306 px. |
+| Résultat à 320 × 640 px | **Vue Champs accessible** | Les deux valeurs reconnues sont affichées dans la zone disponible. |
+| Pagination de l’historique | **Une ligne par page à 320 × 640 px** | La ligne mesure 144 px. Des sélections effectuées sur les pages 1 et 2 restent actives en page 3. |
+| Suppression sur plusieurs pages | **Sous-ensemble exact** | En page 3, la confirmation indique deux scans non affichés. Annuler les conserve. La suppression confirmée retire exactement le QR et le Data Matrix pâle sélectionnés ; l’autre Data Matrix reste présent. La pagination revient à 1 / 1. |
+
+[Capture de référence de ScanCam 1.4.0](screenshots/scancam-1.4.0.png) : trois instances du HTML de production dans des cadres mobiles de 360 × 780 px, présentant Scanner avec la caméra inactive, Réglages et Historique avec deux données fictives. Cette capture ne montre pas une caméra physique en fonctionnement.
+
+### Tests automatisés et compilation
+
+| Périmètre | Résultat | Portée |
+| --- | --- | --- |
+| Suite `npm test` | **81 réussis, 1 ignoré, aucun échec** | 82 tests au total. |
+| Compilation | **Réussie** | HTML autonome `dist/ScanCam.html`, SHA-256 `889b1c72f89d455be82a9dba9f8c698a86864b004f6b60d0fe0aff0c28ebf208`. |
+
+Pour régénérer le banc de simulation après la compilation :
+
+```sh
+node tests/browser-camera-harness.mjs
+```
+
+Ouvrir `dist/camera-check.html` dans l’aperçu local. Le générateur ajoute une page de développement distincte ; il ne modifie ni `dist/ScanCam.html` ni le pack PROD.
+
+### Limites de cette qualification
+
+Aucun essai sur webcam physique, lampe réelle, Safari ou téléphone physique n’a été réalisé pour cette qualification. La réception des boutons Volume d’un téléphone n’est pas validée par les essais de touches clavier dans Chrome Linux. Les autorisations, les marges de sécurité, le clavier virtuel, les gestes tactiles et les changements de hauteur du navigateur mobile restent à vérifier sur les appareils cibles.
+
+**Aucun nouveau contrôle du contenu exact d’un CSV téléchargé n’est revendiqué pour 1.4.0.** La tentative de récupération du téléchargement depuis l’iframe de l’aperçu a expiré. La qualification du contenu CSV réalisée en 1.3.0 reste décrite dans sa section ; les tests unitaires du CSV, inchangés, font partie de la suite relancée. Cette limite de récupération du fichier ne permet pas, à elle seule, de conclure à un défaut de l’export.
 
 ## Qualification 1.3.0 — 10 novembre 2026
 
