@@ -1,8 +1,27 @@
-# Validation de ScanCam 1.2.5
+# Validation de ScanCam 1.3.0
 
-État de qualification du **10 novembre 2026**. La version 1.2.5 supprime les mentions répétées de marque/version et aligne les panneaux. Les qualifications antérieures ci-dessous restent attachées à leur version et à leur date.
+État de qualification du **10 novembre 2026**. La version 1.3.0 ajoute la suppression individuelle, la sélection multiple, les actions de lot et un horodatage plus lisible. Les qualifications antérieures ci-dessous restent attachées à leur version et à leur date.
 
-## Qualification 1.2.5 — 10 novembre 2026
+## Qualification 1.3.0 — 10 novembre 2026
+
+| Périmètre | Résultat | Portée |
+| --- | --- | --- |
+| Suppression individuelle | **Contrôlée dans le HTML compilé** | Corbeille par ligne ; Annuler et Échap conservent les données. Suppression d’une entrée non courante, du résultat courant, puis de la dernière entrée. Compteurs, lectures récentes, résultat et boutons restent cohérents ; filtre conservé et focus restauré. |
+| Sélection multiple | **Contrôlée avec trois codes fictifs** | Cases par ligne et sélection globale des seules lignes affichées. Une recherche conserve les sélections masquées et indique leur nombre. Sélectionner puis désélectionner les résultats laisse intacte une sélection hors du filtre. |
+| Copie et export du lot | **Contenu exact** | Copie de deux codes comparée au texte attendu. CSV téléchargé et relu : uniquement les deux entrées cochées, horodatages ISO avec millisecondes conservés. Sans sélection, le bouton reprend l’export de tout l’historique. |
+| Suppression du lot | **Sous-ensemble exact** | Annulation préserve la sélection. Confirmation avec deux entrées, dont une masquée par le filtre : seuls ces deux codes sont supprimés ; le troisième et le résultat courant sont conservés. Suppression du dernier code sur mobile : compteurs à zéro, résultat vide et export/purge désactivés. |
+| Conservation | **Vérifiée après rechargement** | Avec la conservation activée, seules les entrées restantes sont retrouvées après une suppression individuelle ou groupée. Les clés de stockage existantes sont conservées. |
+| Date et heure | **Contrôlées** | Date et heure locale distinctes, secondes et millisecondes ; fuseau Europe/Paris affiché dans l’essai. L’attribut `datetime` et le CSV conservent l’ISO UTC exact. Il s’agit de la dernière lecture du code regroupé. |
+| Petit écran | **Cadre de 320 × 844 px** | Largeur du document égale à 320 px, sans débordement. Barre mobile à y = 844 px. Cibles des cases à cocher de 44 × 44 px, actions de ligne de 44 px de haut. Les cinq cellules se réorganisent en carte. Effacer une sélection entièrement masquée rend le focus à la recherche. |
+| Structure et syntaxe | **Contrôlées** | Aucun ID dupliqué ni cible de label/ARIA absente ; vérification syntaxique JavaScript réussie. |
+| Tests automatisés | **57 réussis, 1 ignoré, aucun échec** | 58 tests au total, dont huit nouveaux cas de sélection et partition des entrées ; photo locale facultative non fournie. Identité format/contenu, relecture, filtre, entrées supprimées et ordre/métadonnées sont vérifiés. |
+| Compilation | **Réussie** | HTML autonome `dist/ScanCam.html`, SHA-256 `b8034050a1b08855e1eaff7df89d8bf282fcdfd822dd441f252c5a82e85ca7ca`. |
+
+[Capture de l’historique 1.3.0 avec une sélection multiple](screenshots/scancam-1.3.0.png).
+
+Les contrôles d’interface ont été réalisés dans Chrome Linux, avec des images synthétiques. Aucun nouvel essai de webcam physique, de Safari ou de téléphone physique n’est annoncé. L’historique regroupe les relectures d’un même contenu et format ; retirer une ligne retire aussi son compteur de relectures.
+
+## Historique de qualification 1.2.5 — 10 novembre 2026
 
 | Périmètre | Résultat | Portée |
 | --- | --- | --- |

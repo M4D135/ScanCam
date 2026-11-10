@@ -71,8 +71,22 @@ Ctrl+O : ouvrir une image. Ctrl+V : coller une capture. Échap : arrêter.
 L'historique reste en mémoire pendant la session. Dans Réglages, Conserver
 l'historique l'enregistre dans ce navigateur ; désactiver l'option supprime
 la copie enregistrée mais conserve la liste de la session ouverte.
+Chaque ligne regroupe un même format et contenu, avec son compteur de relectures
+(maximum 500 codes distincts). Date et heure indique la dernière lecture : date
+locale, secondes et millisecondes, fuseau du navigateur dans l'en-tête du tableau.
+Cocher plusieurs lignes pour les Copier, les Exporter ou les Supprimer ensemble.
+Tout sélectionner / Sélectionner les résultats agit seulement sur les lignes
+affichées. Les sélections masquées restent actives et leur nombre est indiqué
+par « hors du filtre ». La croix Tout désélectionner retire toute la sélection.
+Copier réunit les contenus cochés, séparés par un retour à la ligne, selon le
+réglage Contenu à copier. Supprimer demande confirmation du nombre de scans.
+La corbeille de chaque ligne retire un seul code après confirmation intégrée.
+Annuler ou Échap conserve les entrées. Une suppression retire aussi les relectures
+regroupées et actualise les compteurs, les lectures récentes et la copie enregistrée.
 Vider demande confirmation dans l'écran Historique ; Annuler garde les données.
-Exporter CSV contient tout l'historique, même filtré (maximum 500 codes distincts).
+Avec des lignes cochées, Exporter la sélection contient seulement ces lignes,
+y compris celles masquées par le filtre. Sans sélection, Exporter CSV contient
+tout l'historique. Les dates du CSV restent au format ISO en UTC avec millisecondes.
 
 Le dossier examples contient trois images synthétiques pour essayer le lecteur.
 

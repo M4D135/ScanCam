@@ -2,7 +2,9 @@
 
 **Lecteur gratuit de Data Matrix, QR codes et codes-barres, toutes marques, avec webcam ou fichier image.**
 
-ScanCam 1.2.5 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+ScanCam 1.3.0 fonctionne dans un fichier HTML autonome. Le moteur de lecture est inclus : aucune installation, aucun abonnement, aucun compte et aucun serveur local ne sont nécessaires pour utiliser le fichier téléchargé. Le traitement des images reste sur l’appareil.
+
+La version **1.3.0** ajoute la suppression individuelle et la sélection de plusieurs scans pour les copier, les exporter ou les supprimer ensemble. Les suppressions demandent confirmation. La date de dernière lecture affiche désormais l’heure locale jusqu’aux millisecondes, avec le fuseau indiqué dans l’en-tête du tableau.
 
 La version **1.2.5** retire les mentions répétées du nom et du numéro de version : ils figurent une seule fois, en haut de la colonne latérale sur PC. Les pieds de page sont supprimés. Les panneaux de Réglages s’alignent en hauteur, avec un aperçu caméra adaptable, et les titres suivent les mêmes marges que les panneaux sur grand écran.
 
@@ -34,7 +36,7 @@ La page hébergée nécessite une connexion Internet pour être chargée ; son a
 
 Le fichier doit être téléchargé et ouvert dans le navigateur. Un aperçu de fichier dans GitHub, une messagerie ou une autre application peut empêcher l’accès à la caméra.
 
-La distribution `ScanCam-1.2.5-PROD.zip` contient la version prête à utiliser, sous forme de fichier HTML à ouvrir dans le navigateur. Le pack `ScanCam-1.2.5-DEV.zip` contient les sources et les fichiers nécessaires à la reconstruction. Après une compilation depuis les sources, le résultat se trouve dans `dist/ScanCam.html`. Les fichiers générés sont distribués dans les Releases et ne sont pas suivis dans Git.
+La distribution `ScanCam-1.3.0-PROD.zip` contient la version prête à utiliser, sous forme de fichier HTML à ouvrir dans le navigateur. Le pack `ScanCam-1.3.0-DEV.zip` contient les sources et les fichiers nécessaires à la reconstruction. Après une compilation depuis les sources, le résultat se trouve dans `dist/ScanCam.html`. Les fichiers générés sont distribués dans les Releases et ne sont pas suivis dans Git.
 
 Trois images de démonstration entièrement fictives sont fournies dans `examples/` : un Data Matrix avec une paire d’identifiants fictifs, un QR contenant du texte et `data-matrix-pale.png`, un petit Data Matrix peu contrasté sur fond texturé.
 
@@ -42,7 +44,7 @@ Trois images de démonstration entièrement fictives sont fournies dans `example
 
 Le panneau de lecture de **Scanner** contient l’aperçu et deux actions : **Caméra** et **Image** sur mobile, **Activer la webcam** et **Ouvrir une image** sur PC. Les menus de détection sont regroupés dans **Réglages → Lecture**.
 
-Sur PC, le lecteur réunit l’aperçu et le résultat dans des panneaux alignés. Les trois dernières lectures et les compteurs de lectures/codes distincts restent accessibles à côté du résultat. **Historique** regroupe recherche, consultation, copie et export ; **Réglages** regroupe lecture, caméra, son, copie automatique et préférences d’affichage.
+Sur PC, le lecteur réunit l’aperçu et le résultat dans des panneaux alignés. Les trois dernières lectures et les compteurs de lectures/codes distincts restent accessibles à côté du résultat. **Historique** regroupe recherche, consultation, sélection, copie, export et suppression ; **Réglages** regroupe lecture, caméra, son, copie automatique et préférences d’affichage.
 
 Sur mobile, la barre fixée en bas occupe toute la largeur et donne accès à quatre écrans : **Scanner**, **Résultat**, **Historique** et **Réglages**. Son fond englobe la zone de sécurité indiquée par le navigateur pour la barre d’accueil de l’appareil. Le contenu reste défilant au-dessus, jusqu’aux dernières commandes. L’accès aux paramètres de lecture et de caméra depuis Scanner se fait par l’onglet **Réglages**.
 
@@ -50,7 +52,9 @@ Une lecture caméra affiche une notification ouvrant le résultat, sans quitter 
 
 Le bouton **Afficher** d’une entrée de l’historique et les lectures récentes ouvrent le résultat correspondant. Le retour à l’historique conserve la recherche et la position dans la liste.
 
-![Panneaux de Réglages alignés dans ScanCam 1.2.5](docs/screenshots/scancam-1.2.5.png)
+![Sélection multiple dans l’historique de ScanCam 1.3.0](docs/screenshots/scancam-1.3.0.png)
+
+[Panneaux de Réglages alignés dans ScanCam 1.2.5](docs/screenshots/scancam-1.2.5.png)
 
 [Interface avant simplification 1.2.4](docs/screenshots/scancam-1.2.4.png)
 
@@ -122,7 +126,7 @@ Les images sont lues l’une après l’autre. Pendant l’import, **Annuler** r
 
 ## Copier les informations
 
-Le menu **Contenu à copier**, dans **Réglages**, s’applique au bouton principal, aux boutons de l’historique et à la copie automatique :
+Le menu **Contenu à copier**, dans **Réglages**, s’applique au bouton principal, aux copies individuelles ou groupées de l’historique et à la copie automatique :
 
 - **Contenu complet** : texte exact renvoyé par le code.
 - **Numéro de série (si identifié)** : champ explicitement nommé ou extrait d’une structure reconnue.
@@ -148,15 +152,23 @@ Un lien HTTP ou HTTPS peut être ouvert avec **Ouvrir le lien**. La lecture seul
 
 L’historique contient au maximum **500 codes distincts**, identifiés par leur format et leur contenu. Une nouvelle lecture d’un code déjà connu actualise sa date, son compteur et sa position dans la liste. Lorsque la limite est atteinte, les entrées les plus anciennes sortent du journal. Les compteurs affichés portent sur les entrées conservées.
 
+**Date et heure** désigne la **dernière lecture** de la ligne, et non sa première apparition. La date et l’heure locale sont affichées séparément, avec secondes et millisecondes. Le fuseau du navigateur figure dans l’en-tête du tableau ; l’horodatage ISO est également disponible dans l’infobulle.
+
 Par défaut, les résultats restent en mémoire pendant la session. Activer **Conserver l’historique** dans **Réglages** pour les enregistrer dans le stockage local du navigateur. Désactiver cette option supprime la copie enregistrée, tout en gardant la liste de la session ouverte. Cette mémorisation dépend des autorisations de stockage du navigateur. Les préférences d’affichage et de lecture sont enregistrées séparément ; les images ne sont pas conservées.
+
+Cocher les lignes à traiter. **Tout sélectionner**, ou **Sélectionner les résultats** lorsqu’une recherche est active, agit uniquement sur les lignes affichées. Les sélections masquées par le filtre restent cochées ; leur nombre est indiqué par **hors du filtre**. La croix **Tout désélectionner** retire toute la sélection, y compris les lignes masquées.
+
+Le bouton **Copier** de la barre de sélection réunit les scans cochés dans l’ordre de l’historique, séparés par un retour à la ligne. Le réglage **Contenu à copier** s’applique à chaque entrée. **Supprimer** dans cette barre demande confirmation du nombre de scans concernés, en précisant si certains sont masqués par le filtre. **Annuler** ou **Échap** conserve les données.
+
+La **corbeille** d’une ligne permet aussi de supprimer un seul scan, avec confirmation **Annuler / Supprimer** dans cette ligne. Une suppression retire l’entrée entière et ses relectures regroupées. Les autres entrées et la recherche restent en place ; les compteurs, lectures récentes et données enregistrées sont actualisés. Si le résultat courant fait partie des entrées supprimées, son panneau revient à son état vide.
 
 **Vider** demande une confirmation intégrée à l’écran Historique. **Annuler** conserve les données ; confirmer efface l’historique, le résultat courant et les compteurs. Aucun dialogue séparé du navigateur n’est nécessaire.
 
-**Exporter CSV** exporte tout l’historique, y compris les lignes masquées par une recherche. Le fichier utilise UTF-8 avec BOM, le séparateur `;` et les colonnes suivantes :
+Lorsqu’au moins une ligne est cochée, le bouton devient **Exporter la sélection** et exporte seulement les scans cochés, y compris ceux masqués par le filtre. Sans sélection, **Exporter CSV** exporte tout l’historique, même lorsqu’une recherche masque des lignes. Le fichier utilise UTF-8 avec BOM, le séparateur `;` et les colonnes suivantes :
 
 | Colonne | Contenu |
 | --- | --- |
-| Date | Date de la dernière lecture au format ISO, en UTC. |
+| Date | Date et heure de la dernière lecture au format ISO, en UTC, avec millisecondes. |
 | Format | Famille de code reconnue. |
 | Contenu | Texte décodé. |
 | Numéro de série | Champ lorsqu’il est identifié. |
@@ -211,6 +223,7 @@ Le build produit `dist/ScanCam.html` et incorpore le moteur ainsi que les notice
 | --- | --- |
 | `src/index.html`, `src/styles.css` | Interface française, thèmes sombre et clair. |
 | `src/app.js` | Webcam, images, résultats, presse-papiers et historique. |
+| `src/history.js` | Identité des entrées, sélection filtrée et séparation des lignes à conserver ou supprimer. |
 | `src/ui.js` | Navigation responsive, écrans mobile, notifications et préférences d’animation/densité. |
 | `src/decoder.js`, `src/detection.js` | Moteur local, profils de lecture, contraste et zone centrale. |
 | `src/datamatrix-compat.js` | Vérification ECC200 et compatibilité strictement limitée au terminateur Data Matrix redondant. |

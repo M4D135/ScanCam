@@ -4,6 +4,7 @@ import { buildVideoConstraints, createCameraController } from './camera.js';
 import { parseLabelFields, safeHttpUrl, formatLabel, toCsv } from './core.js';
 import { normalizeVolume, playScanBeep } from './sound.js';
 import { createWorkspaceUI } from './ui.js';
+import { historyKey, reconcileHistorySelection, selectVisibleHistory, partitionHistorySelection } from './history.js';
 
 const $ = (id) => document.getElementById(id);
 // Keep the original storage namespace so the rename retains existing user data.
@@ -26,12 +27,16 @@ const ui = Object.fromEntries([
   'motionPreference', 'densityPreference', 'resultPlaceholder', 'resultContent',
   'recentReads', 'emptyRecent', 'clearConfirm', 'confirmClearHistory', 'cancelClearHistory',
   'closeHelp', 'stopCameraLabel',
+  'historySelection', 'selectAllHistory', 'selectAllHistoryLabel', 'selectionSummary',
+  'clearSelection', 'copySelection', 'deleteSelection', 'deleteSelectionConfirm',
+  'deleteSelectionTitle', 'deleteSelectionHint', 'cancelDeleteSelection', 'confirmDeleteSelection', 'historyTimezone',
 ].map((id) => [id, $(id)]));
 
 const state = {
   ready: false, starting: false, running: false, importing: false,
   stream: null, cameraToken: 0, imageToken: 0, timer: 0, toastTimer: 0,
-  records: [], current: null, seen: new Map(), visibleCodes: new Set(), audio: null,
+  records: [], current: null, pendingDelete: null, seen: new Map(), visibleCodes: new Set(), audio: null,
+  selectedHistory: new Set(), pendingDeleteBatch: null,
   storageWarned: false,
   cameraController: null, cameraApplying: false, scanAbort: null, imageAbort: null,
   detectionRevision: 0,
@@ -40,6 +45,9 @@ const frameCanvas = document.createElement('canvas');
 const frameContext = frameCanvas.getContext('2d', { willReadFrequently: true });
 let clipboardQueue = Promise.resolve();
 let workspace;
+const historyCheckboxKeys = new WeakMap();
+const historyDateFormat = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const historyClockFormat = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
 
 function message(text = '', kind = 'info') {
   ui.appMessage.replaceChildren();
@@ -368,15 +376,149 @@ function filteredHistory() {
     `${record.text} ${formatLabel(record.format)}`.toLocaleLowerCase('fr').includes(needle));
 }
 
+function sameCode(left, right) {
+  return !!left && !!right && left.format === right.format && left.text === right.text;
+}
+
+function focusHistoryAction(index) {
+  const buttons = ui.historyBody.querySelectorAll('[data-delete-scan]');
+  const target = index >= 0 && buttons.length
+    ? buttons[Math.min(index, buttons.length - 1)] : ui.searchHistory;
+  target.focus({ preventScroll: true });
+}
+
+function cancelDeleteScan() {
+  const index = filteredHistory().findIndex((record) => sameCode(record, state.pendingDelete));
+  state.pendingDelete = null;
+  renderHistory();
+  focusHistoryAction(index);
+}
+
+function removeHistoryRecords(keys) {
+  const { kept, removed } = partitionHistorySelection(state.records, keys);
+  state.records = kept;
+  for (const record of removed) {
+    const key = `${record.format}\0${record.text}`;
+    state.seen.delete(key);
+    state.visibleCodes.delete(key);
+  }
+  if (removed.some((record) => sameCode(record, state.current))) resetResult();
+  if (removed.length) persistHistory();
+  renderHistory();
+  return removed.length;
+}
+
+function deleteScan() {
+  const target = state.pendingDelete;
+  const visibleIndex = filteredHistory().findIndex((record) => sameCode(record, target));
+  const index = state.records.findIndex((record) => sameCode(record, target));
+  state.pendingDelete = null;
+  if (index < 0) {
+    renderHistory();
+    focusHistoryAction(visibleIndex);
+    return;
+  }
+  removeHistoryRecords(new Set([historyKey(target)]));
+  focusHistoryAction(visibleIndex);
+  toast('Scan supprimé');
+}
+
+function cancelDeleteSelection(restoreFocus = true) {
+  state.pendingDeleteBatch = null;
+  renderHistory();
+  if (restoreFocus) (ui.deleteSelection.disabled ? ui.searchHistory : ui.deleteSelection).focus({ preventScroll: true });
+}
+
+function deleteSelectedScans() {
+  const keys = state.pendingDeleteBatch;
+  if (!keys?.size) return;
+  state.pendingDeleteBatch = null;
+  const removed = removeHistoryRecords(keys);
+  ui.searchHistory.focus({ preventScroll: true });
+  if (removed) toast(`${removed} scan${removed > 1 ? 's supprimés' : ' supprimé'}`);
+}
+
+function updateHistorySelection(visible) {
+  state.selectedHistory = reconcileHistorySelection(state.records, state.selectedHistory);
+  const selectedCount = state.selectedHistory.size;
+  const visibleSelected = visible.filter((record) => state.selectedHistory.has(historyKey(record))).length;
+  const hiddenCount = selectedCount - visibleSelected;
+  ui.historySelection.hidden = state.records.length === 0;
+  ui.selectAllHistory.disabled = visible.length === 0;
+  ui.selectAllHistory.checked = visible.length > 0 && visibleSelected === visible.length;
+  ui.selectAllHistory.indeterminate = visibleSelected > 0 && visibleSelected < visible.length;
+  ui.selectAllHistoryLabel.textContent = ui.searchHistory.value.trim() ? 'Sélectionner les résultats' : 'Tout sélectionner';
+  ui.selectionSummary.textContent = selectedCount
+    ? `${selectedCount} sélectionné${selectedCount > 1 ? 's' : ''}${hiddenCount ? ` · ${hiddenCount} hors du filtre` : ''}`
+    : 'Aucune sélection';
+  ui.clearSelection.hidden = selectedCount === 0;
+  ui.copySelection.disabled = ui.deleteSelection.disabled = selectedCount === 0;
+  ui.exportCsv.querySelector('span').textContent = selectedCount ? 'Exporter la sélection' : 'Exporter CSV';
+  ui.exportCsv.setAttribute('aria-label', selectedCount
+    ? `Exporter ${selectedCount === 1 ? 'le scan sélectionné' : `les ${selectedCount} scans sélectionnés`} en CSV` : 'Exporter tout l’historique en CSV');
+  ui.historyTimezone.textContent = historyClockFormat.resolvedOptions().timeZone;
+  if (state.pendingDeleteBatch) {
+    state.pendingDeleteBatch = reconcileHistorySelection(state.records, state.pendingDeleteBatch);
+    if (!state.pendingDeleteBatch.size) state.pendingDeleteBatch = null;
+  }
+  const deleting = state.pendingDeleteBatch?.size || 0;
+  ui.deleteSelectionConfirm.hidden = !deleting;
+  ui.deleteSelection.setAttribute('aria-expanded', String(!!deleting));
+  if (deleting) {
+    ui.deleteSelectionTitle.textContent = `Supprimer ${deleting} scan${deleting > 1 ? 's sélectionnés' : ' sélectionné'} ?`;
+    const hiddenDeleting = deleting - visible.filter((record) => state.pendingDeleteBatch.has(historyKey(record))).length;
+    ui.deleteSelectionHint.textContent = hiddenDeleting
+      ? `${hiddenDeleting} ${hiddenDeleting === 1 ? 'de ces scans est masqué' : 'de ces scans sont masqués'} par le filtre actuel.` : 'Seules les lignes sélectionnées seront supprimées.';
+  }
+}
+
 function renderHistory() {
+  const focusedSelection = historyCheckboxKeys.get(document.activeElement);
+  const focusedConfirmation = ['cancelDeleteScan', 'confirmDeleteScan'].includes(document.activeElement?.id)
+    ? document.activeElement.id : null;
+  if (state.pendingDelete && !state.records.some((record) => sameCode(record, state.pendingDelete))) {
+    state.pendingDelete = null;
+  }
   const visible = filteredHistory();
+  updateHistorySelection(visible);
   const fragment = document.createDocumentFragment();
   for (const record of visible) {
     const row = document.createElement('tr');
+    const key = historyKey(record);
+    row.classList.toggle('is-selected', state.selectedHistory.has(key));
+    const selection = document.createElement('td');
+    selection.className = 'history-select-cell';
+    const selectionControl = document.createElement('label');
+    selectionControl.className = 'history-select-control';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'history-select';
+    checkbox.checked = state.selectedHistory.has(key);
+    checkbox.setAttribute('aria-label', `Sélectionner : ${formatLabel(record.format)}, ${record.text.slice(0, 80)}`);
+    historyCheckboxKeys.set(checkbox, key);
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) state.selectedHistory.add(key);
+      else state.selectedHistory.delete(key);
+      state.pendingDelete = state.pendingDeleteBatch = null;
+      renderHistory();
+    });
+    selectionControl.append(checkbox);
+    selection.append(selectionControl);
     const time = document.createElement('td');
     time.className = 'history-time';
     time.dataset.label = 'Date';
-    time.textContent = displayTime(record.timestamp);
+    const timestamp = document.createElement('time');
+    const date = new Date(record.timestamp);
+    timestamp.dateTime = record.timestamp;
+    timestamp.title = `${displayTime(record.timestamp)} · ${historyClockFormat.resolvedOptions().timeZone}\n${record.timestamp}`;
+    const day = document.createElement('span');
+    day.className = 'history-date';
+    day.textContent = historyDateFormat.format(date);
+    const clock = document.createElement('span');
+    clock.className = 'history-clock';
+    clock.textContent = historyClockFormat.format(date);
+    timestamp.append(day, document.createTextNode(' '), clock);
+    time.append(timestamp);
     const format = document.createElement('td');
     format.className = 'history-format';
     format.dataset.label = 'Format';
@@ -391,18 +533,61 @@ function renderHistory() {
     value.title = record.text;
     const actions = document.createElement('td');
     actions.className = 'history-row-actions';
-    for (const [label, action] of [
-      ['Afficher', () => revealResult(record)],
-      ['Copier', () => copyText(selectedCopyText(record))],
-    ]) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'table-action';
-      button.textContent = label;
-      button.addEventListener('click', action);
-      actions.append(button);
+    if (sameCode(record, state.pendingDelete)) {
+      row.classList.add('is-delete-pending');
+      const confirmation = document.createElement('div');
+      confirmation.className = 'history-delete-confirm';
+      confirmation.setAttribute('role', 'group');
+      confirmation.setAttribute('aria-label', 'Supprimer ce scan ?');
+      const label = document.createElement('span');
+      label.textContent = 'Supprimer ce scan ?';
+      const buttons = document.createElement('div');
+      buttons.className = 'history-delete-actions';
+      for (const [id, text, action] of [
+        ['cancelDeleteScan', 'Annuler', cancelDeleteScan],
+        ['confirmDeleteScan', 'Supprimer', deleteScan],
+      ]) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.id = id;
+        button.className = `table-action${id === 'confirmDeleteScan' ? ' table-action-danger' : ''}`;
+        button.textContent = text;
+        button.addEventListener('click', action);
+        buttons.append(button);
+      }
+      confirmation.append(label, buttons);
+      actions.append(confirmation);
+    } else {
+      for (const [label, action] of [
+        ['Afficher', () => revealResult(record)],
+        ['Copier', () => copyText(selectedCopyText(record))],
+      ]) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'table-action';
+        button.textContent = label;
+        button.addEventListener('click', action);
+        actions.append(button);
+      }
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'table-action table-action-danger';
+      remove.dataset.deleteScan = '';
+      remove.title = 'Supprimer ce scan';
+      remove.setAttribute('aria-label', 'Supprimer ce scan');
+      remove.append(ui.clearHistory.querySelector('svg').cloneNode(true));
+      remove.addEventListener('click', () => {
+        state.pendingDeleteBatch = null;
+        state.pendingDelete = record;
+        ui.clearConfirm.hidden = true;
+        ui.clearHistory.setAttribute('aria-expanded', 'false');
+        renderHistory();
+        $('cancelDeleteScan')?.focus({ preventScroll: true });
+        $('cancelDeleteScan')?.closest('.history-delete-confirm').scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      });
+      actions.append(remove);
     }
-    row.append(time, format, value, actions);
+    row.append(selection, time, format, value, actions);
     fragment.append(row);
   }
   ui.historyBody.replaceChildren(fragment);
@@ -416,6 +601,11 @@ function renderHistory() {
   ui.clearHistory.disabled = state.records.length === 0;
   workspace?.syncHistory({ total, unique: state.records.length });
   renderRecentReads();
+  if (focusedConfirmation) ($(focusedConfirmation) || ui.searchHistory).focus({ preventScroll: true });
+  if (focusedSelection) {
+    const control = [...ui.historyBody.querySelectorAll('.history-select')].find((checkbox) => historyCheckboxKeys.get(checkbox) === focusedSelection);
+    (control || ui.searchHistory).focus({ preventScroll: true });
+  }
 }
 
 function acceptResult(result, source = 'image') {
@@ -829,35 +1019,46 @@ async function importFiles(input) {
 
 function exportHistory() {
   if (!state.records.length) return;
-  const blob = new Blob([toCsv(state.records)], { type: 'text/csv;charset=utf-8' });
+  const rows = state.selectedHistory.size
+    ? partitionHistorySelection(state.records, state.selectedHistory).removed : state.records;
+  if (!rows.length) return;
+  const blob = new Blob([toCsv(rows)], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `ScanCam-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = `ScanCam-${new Date().toISOString().slice(0, 10)}${state.selectedHistory.size ? '-selection' : ''}.csv`;
   document.body.append(link);
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  toast('Historique exporté en CSV');
+  toast(state.selectedHistory.size ? `${rows.length} scans exportés en CSV` : 'Historique exporté en CSV');
 }
 
-function clearHistory() {
-  stopAll();
-  state.records = [];
-  state.seen.clear();
+function resetResult() {
   state.current = null;
-  ui.searchHistory.value = '';
   ui.resultText.value = '';
   ui.detectedFormat.textContent = 'Aucun code';
   ui.resultTime.textContent = 'En attente d’une lecture';
   ui.fieldCards.replaceChildren();
   ui.copyResult.disabled = true;
   ui.openLink.hidden = true;
+  ui.openLink.removeAttribute('title');
   ui.resultPlaceholder.hidden = false;
   ui.resultContent.hidden = true;
+  workspace.clearResult();
+}
+
+function clearHistory() {
+  stopAll();
+  state.records = [];
+  state.seen.clear();
+  state.pendingDelete = null;
+  state.pendingDeleteBatch = null;
+  state.selectedHistory.clear();
+  ui.searchHistory.value = '';
+  resetResult();
   ui.clearConfirm.hidden = true;
   ui.clearHistory.setAttribute('aria-expanded', 'false');
-  workspace.clearResult();
   persistHistory();
   renderHistory();
   $('historyTitle')?.focus({ preventScroll: true });
@@ -921,10 +1122,42 @@ function bindEvents() {
     const url = state.current && safeHttpUrl(state.current.text);
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
   });
-  ui.searchHistory.addEventListener('input', renderHistory);
+  ui.searchHistory.addEventListener('input', () => {
+    state.pendingDelete = state.pendingDeleteBatch = null;
+    renderHistory();
+  });
+  ui.selectAllHistory.addEventListener('change', () => {
+    state.selectedHistory = selectVisibleHistory(state.records, state.selectedHistory, filteredHistory(), ui.selectAllHistory.checked);
+    state.pendingDelete = state.pendingDeleteBatch = null;
+    renderHistory();
+  });
+  ui.clearSelection.addEventListener('click', () => {
+    state.selectedHistory.clear();
+    state.pendingDelete = state.pendingDeleteBatch = null;
+    renderHistory();
+    (ui.selectAllHistory.disabled ? ui.searchHistory : ui.selectAllHistory).focus({ preventScroll: true });
+  });
+  ui.copySelection.addEventListener('click', () => {
+    const selected = partitionHistorySelection(state.records, state.selectedHistory).removed;
+    if (selected.length) void copyText(selected.map(selectedCopyText).join('\n'));
+  });
+  ui.deleteSelection.addEventListener('click', () => {
+    if (!state.selectedHistory.size) return;
+    state.pendingDelete = null;
+    state.pendingDeleteBatch = new Set(state.selectedHistory);
+    ui.clearConfirm.hidden = true;
+    ui.clearHistory.setAttribute('aria-expanded', 'false');
+    renderHistory();
+    ui.cancelDeleteSelection.focus({ preventScroll: true });
+    ui.deleteSelectionConfirm.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  });
+  ui.cancelDeleteSelection.addEventListener('click', () => cancelDeleteSelection());
+  ui.confirmDeleteSelection.addEventListener('click', deleteSelectedScans);
   ui.exportCsv.addEventListener('click', exportHistory);
   ui.clearHistory.addEventListener('click', () => {
     if (!state.records.length) return;
+    state.pendingDelete = state.pendingDeleteBatch = null;
+    renderHistory();
     ui.clearConfirm.hidden = false;
     ui.clearHistory.setAttribute('aria-expanded', 'true');
     ui.cancelClearHistory.focus({ preventScroll: true });
@@ -959,7 +1192,9 @@ function bindEvents() {
       if (!ui.importImage.disabled) ui.importImage.click();
     }
     if (event.key === 'Escape') {
-      if (!ui.clearConfirm.hidden) ui.cancelClearHistory.click();
+      if (state.pendingDelete) cancelDeleteScan();
+      else if (state.pendingDeleteBatch) cancelDeleteSelection();
+      else if (!ui.clearConfirm.hidden) ui.cancelClearHistory.click();
       else if (!ui.helpPanel.hidden) toggleHelp(false);
       else stopAll();
     }
@@ -1002,6 +1237,10 @@ async function boot() {
       // Leaving it for History or a mobile result also invalidates a pending prompt.
       if ((screen === 'history' || (screen === 'result' && isMobile)) && (state.running || state.starting)) releaseCamera();
       if (reason !== 'init') {
+        if (state.pendingDelete || state.pendingDeleteBatch) {
+          state.pendingDelete = state.pendingDeleteBatch = null;
+          renderHistory();
+        }
         ui.clearConfirm.hidden = true;
         ui.clearHistory.setAttribute('aria-expanded', 'false');
         ui.helpPanel.hidden = true;
